@@ -1,0 +1,4 @@
+mp3
+- artist : mp3info -p "%a"
+- genre : mp3info -p "%g"
+jpg

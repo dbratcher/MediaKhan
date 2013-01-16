@@ -11,7 +11,11 @@
 *.so.*
 *.dylib
 
+# Logs
+logFile
+
 # Executables
+khan
 *.exe
 *.out
 *.app

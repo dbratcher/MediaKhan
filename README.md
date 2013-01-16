@@ -80,7 +80,7 @@ Meta data storage abstracted from the particular database types. Khan
 just capitalizes on the mapping functionality. Plans to utilize EVPath for more
 dynamic mappings and marshalling of data across network connections.
 
-### 6. Acknowldgements
+### 6. Acknowledgements
 
 - Voldemort Paper
 - Paper on modern filesystems.

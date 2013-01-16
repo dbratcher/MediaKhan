@@ -1,15 +1,14 @@
 #include "params.h"
 #include <sys/stat.h>
+#include <string.h>
 #include <sys/types.h>
 #include <fuse.h>
 #include <ulockmgr.h> /**/
-#include <string.h>
 #include <vector>
 #include <functional>
 #include <errno.h>
 #include <dlfcn.h>
 #include <unistd.h> 
-#include <string>
 #include <fuse_opt.h>
 #include <fuse_lowlevel.h>
 #include <stddef.h>
@@ -22,10 +21,8 @@
 #include <signal.h>
 #include <voldemort/voldemort.h>
 #include "redis.h"
-#include <string>
 #include <list>
 #include <memory>
-#include <iostream>
 #include <fstream>
 #include <map>
 #include <sstream>

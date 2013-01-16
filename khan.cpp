@@ -53,7 +53,6 @@ SocketStoreClientFactory *gfactory;
 auto_ptr<StoreClient> *gclient;
 
 void voldemort_remove_val(string fileid, string col, string val);
-void redis_remove_val(string fileid, string col, string val);
 char* append_path2(string);
 
 int get_file_size(string file_name){
@@ -322,47 +321,6 @@ string redis_getkey_cols(string col){
 	return ret_val;
 }
 
-void redis_remove_val(string fileid, string col, string val){
-	string replaced=redis_getval(fileid,col);
-	cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
-	cout << "replaced :"<<replaced<<endl;
-	if(replaced.find(val)!=string::npos){
-		cout<<"its here"<<endl;
-
-		//remove from file entry
-		replaced.replace(replaced.find(val),val.length()+1,"");
-		if(replaced.length()>0 && replaced.at(0)==':'){
-			replaced="~"+col+replaced;
-		} else {
-			replaced="~"+col+":"+replaced;
-		}
-		if((replaced.length()-1)>0){
-			cout<<replaced.length()<<endl;
-			if(replaced.at(replaced.length()-1)==':'){
-				replaced.erase(replaced.length()-1);
-			}
-		}
-		cout<<"new replaced:"<<replaced<<endl;
-		reply = (redisReply *)redisCommand(c,"set %s %s",fileid.c_str(),replaced.c_str());
-
-		//remove from col entry
-		reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-		string sout=reply->str;
-		cout <<"col side:"<<sout<<endl;
-		int len=sout.find("~"+val+":");
-		int len2=sout.find("~",len+1);
-		cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
-		if(len2>0){
-			sout.replace(len,len2-len,"");
-		} else if(len>0) {
-			sout.replace(len,sout.length(),"");
-		} else {
-			sout="";
-		}
-		cout <<"new col:"<<sout<<endl;
-		reply = (redisReply *)redisCommand(c,"set %s %s",col.c_str(),sout.c_str());
-	}
-}
 
 
 

@@ -21,7 +21,7 @@
 #include <time.h>
 #include <signal.h>
 #include <voldemort/voldemort.h>
-#include <hiredis/hiredis.h>
+#include "redis.h"
 #include <string>
 #include <list>
 #include <memory>

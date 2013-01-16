@@ -4,12 +4,12 @@ A distributed fuse-based media filesystem.
 
 ## Contents
 
-1. Setup and Installation
-2. Running a khan client.
-3. Setting up metadata and media servers.
-4. Program Layout
-5. Design and Implementation
-6. Acknowledged Papers and Projects
+1. [Installation](https://github.com/dbratcher/MediaKhan#1-installation)
+2. [Client Configuration](https://github.com/dbratcher/MediaKhan#2-client-configuration)
+3. [Server Configuration](https://github.com/dbratcher/MediaKhan#3-server-configuration)
+4. [Program Layout](https://github.com/dbratcher/MediaKhan#4-program-layout)
+5. [Design and Implementation](https://github.com/dbratcher/MediaKhan#5-design-and-implementation)
+6. [Acknowledgements](https://github.com/dbratcher/MediaKhan#6-acknowledgements)
 
 
 ### 1. Installation
@@ -40,7 +40,7 @@ A distributed fuse-based media filesystem.
 9. Install mp3info (use to generate metadata -see filetypes.txt)
 10. Install mpg321 (use to play songs)
 
-### 2. The Client
+### 2. Client Configuration
 
 1. Pick a Server
  - Run Voldemort Server. Khan assumes server is at localhost:6666
@@ -49,7 +49,7 @@ A distributed fuse-based media filesystem.
 3. Call ./khan /tmp/fuse/ -d. (will show debug messages for filesystem - type mkdir stats to see timing info)
 4. Look at /tmp/fuse to see filesystem in another prompt.
 
-### 3. Media and Metadata Servers
+### 3. Server Configuration
 
 The instructions on how to start the servers is with the respective server code;
  it is a rather open ended part of the the architecture, you can set up the metadata 

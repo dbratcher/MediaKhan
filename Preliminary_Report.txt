@@ -1,0 +1,74 @@
+Khan File System
+Preliminary Report
+Drew Bratcher
+
+Introduction
+  The modern file system is based on a design originated in the early 1960s. With the rapidly evolving Internet and all of the technologic capabilities that come with it, it is time for a more feature full file system. Users require different and more varied tasks in the modern world, most of which can be related to search. With an ever increasing number of  files on the web and a growing space of file types and file attributes, search will be crucial functionality in future file systems.
+	Another concern of the modern file system is dealing with the ever more connected systems in our world. Users are beginning to see the advantages of having networks in their own homes, and personal users setting up media servers is no longer uncommon. A modern file system must be better suited to deal with the challenges surrounding this scenario.
+
+Previous Work
+	In the past people have looked into creating distributed file systems. One of the first, the Andrew File System, focused on scalability. Similarly, file systems that came after, such as the Google file system focused on large scale systems and applications. Other people have created systems backed by databases. This sort of system lends itself well to search queries. People have taken that goal of simplifying search and have created semantic systems such as Spyglass or the Semantic File System. Each of these systems represent a component of what Khan incorporates for an average personal computer user.
+
+Conceptual Architecture
+We created a dynamic modular architecture with pick your own API functionality. It is a versatile semantic, database backed, distributed file system. The system was designed with the following features in mind:
+
+System should allow access to media files located on a server and the meta data associated with the files
+System should support multiple clients running at once and insure the server reflects the state of each client
+System should support creation of “attributes” that extend the meta data associated with a particular media
+System should support creation of directories which contain references to all media with a particular set of meta data
+These features highlight the semantic nature of the file system, as well as the distributed nature of the system. 
+Furthermore the system was designed with particular user functionality. The following are a few scenarios a possible client may use the file system for:
+
+Client creates a new directory and moves several mp3s into it. This creates a new attribute by the directory name and sets that on the mp3s moved into it.
+Client creates a new sub-directory. The client then opens the directory name as a file to write the attributes that must be met for files in the directory. The system only looks to include files in the parent directory.
+The system should support a wide variety of tasks for users. The system especially makes searching for files expedient.
+	With these design goals in mind, the Khan file system was designed to be expandable in nature. A modular architecture allows Khan to plug into a variety of database APIs as well as other file systems to provide a rich grammar of file system tasks. 
+
+
+Experimentation
+Testing the system involved 100 mp3s on a Webdav server connected to a local machine with about 10 mp3s over wireless. The system in its current implementation supports artist, title,  and genre attributes of songs as provided via the mp3info2 tool. Experimentation varied the number of Voldemort servers, the number of files involved, as well as whether everything was local or if the Webdav server was used.
+A number of operations deemed relavent to the scenario were measured. In particular the start up time of the system as well as the time for listing the contents of a directory and copying a file were measured. Time for listing the contents of a directory seemed to increase linearly with the number of contents in the directory. Similarly copying depended on the size and number of files.
+	Finally, there did not seem to be much bearing on whether one or two Voldemort servers were used, however using Webdav greatly slowed the process down, most likely due to network delays. Not all network delays are represented in the times below. Often times setup for the first time over Webdav took upwards of 10 minutes.
+	
+Startup Time(in seconds)	Setup	Not Setup
+Local	2.3	0.1
+Webdav	28.4	0.1
+
+
+
+Conclusion
+Our file system solves some problems while presenting new challenges. The quick look up capabilities supported by the database provide a nice feature for users. However the slow start up time and other problems involving network operations leave room for improvement.
+
+Future Work
+	The main concern with file systems such as these is the time necessary for dealing with a large number of files. Given the bandwidth restrictions of networked operations, speed and efficient usage of bandwidth are primary concerns for future work on Khan. Also expanding the semantic capabilities and applications of the system are a future goal.
+The meta data rich nature of the system would provide an interesting environment to attempt smart caching of relevant meta data information. One could use access patterns as well as other information about the usage of files to cache files around the various network locations in the file system.
+Likewise a multi-threaded approach where background processes prepare the appropriate data for the local machine could significantly speed operations. These tasks could even perform more complex operations on the data. Incorporating software such as C on Demand could greatly increase the functionality of the system.
+Finally, Khan has great potential to be a truly semantic file system. The configurable and expandable nature of the system allows for a great deal of meta data processing. This in turn allows users to configure their system on a personal level and provides users with a fluid interface. Expanding upon this feature of the system as well as making it easier to use is a focus of future work.
+
+
+
+
+
+
+
+
+
+
+
+Bibliography
+1) David Gifford, Pierre Jouvelot, Mark Sheldon, and James O’Toole, Jr.,  “Semantic File Systems”, Proceedings of 13th ACM Symposium on Operating Systems Principles, 1991.
+http://web.mit.edu/6.826/www/notes/HO13.pdf
+2) Margo Seltzer and Nicholas Murphy, “Hierarchical File Systems are Dead”, HotOS 2009
+http://www.eecs.harvard.edu/~margo/papers/hotos09/paper.pdf
+3) Richard Harper, Eno Thereska, Siân Lindley, Richard Banks, Phil Gosset, William Odom, Gavin Smyth, and Eryn Whitworth, “What is a File”, Microsoft Research Tech Report MSR-TR-2011-109
+http://research.microsoft.com/pubs/154539/MSR-TR-2011-109.pdf
+4) Tyler Harter, Chris Dragga, Michael Vaughn, Andrea C. Arpaci-Dusseau, and Remzi H. Arpaci-Dusseau, “A File is Not a File: Understanding the I/O Behavior of Apple Desktop Applications”, Proceedings of SOSP 2011, October 2011.
+http://sigops.org/sosp/sosp11/current/2011-Cascais/printable/06-harter.pdf
+5) Ethan Miller et al, Ceph
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.66.690&rep=rep1&type=pdf
+6) Choudhary et al, “Distributed File Systems”, 2008.
+http://onlinelibrary.wiley.com/doi/10.1002/9780470050118.ecse119/full
+7) Ethan Miller et al, “Spyglass: metadata search for large-scale storage”, 2009
+http://www.usenix.org/publications/login/2009-06/pdfs/leung.pdf
+8) Ron Oldfield et al, “Armada: A parallel ﬁle system for computational grids”, 2001
+http://www.cs.dartmouth.edu/~dfk/papers/oldfield:armada.pdf

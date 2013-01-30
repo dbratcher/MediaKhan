@@ -1,0 +1,67 @@
+BASIC SETUP:
+
+Download source:
+1.) $ svn co https://svn.research.cc.gatech.edu/kaos/khan/branches/media/
+2.) cd into folder
+3.) modify khan.cpp and khan.h for file location (khan_root)
+4.) make/ make clean
+
+SERVER SETUP:
+1.) Start Redis Server
+	- open terminal into /redis folder and go into /src folder
+	- $ ./redis-server
+	- open another terminal into /redis folder and go into /src folder
+	- $ ./redis-cli
+2.) Modify khan.cpp line 10 - to use redis
+
+TESTING SETUP:
+-- Mount Media Folder --
+1.) Terminal operation
+	$ mount /tmp/networkedFiles
+1a.) mount as user to address some permission problems
+1b.) go to /etc/fstab and add in the following (change ‘peter’ to appropriate user you want it to access/mount)
+
+# 4shared.com webdav
+
+https://webdav.4shared.com/ /tmp/networkedFiles davfs user,uid=peter,noauto,rw 0 0
+
+2.) enter username and pass to access files
+
+
+RUNNING:
+
+-- Start up Redis Server --
+1.) Start up server
+	$ ./redis-server
+1a.) (Optional) Open client to see what is contained in database
+	$ ./redis-cli
+
+-- Run Khan --
+1.) make clean/make
+2.) Set up folder
+	$ mkdir /tmp/fuse
+3.) Run khan
+	$ ./khan /tmp/fuse
+	$ ./khan /tmp/fuse -d (debug)
+4.) for getting timings
+    	$ mkdir stats (in /tmp/fuse)
+
+-- While Running --
+1.) Useful Redis Client Commands
+    	$ redis … > keys *
+        	Prints out a list of keys
+    	$ redis … > get 12
+        	Print out value for key 12
+    	$ redis … > flushall
+        	Clear out all keys in redis database
+   
+-- End/Clean up --
+
+1.) when done:
+    	$ umount /tmp/fuse/
+
+-- Implemented Commands --
+mkdir stats
+mkdir refreshall
+mkdir FOLDER.union.FOLDER
+mkdir FOLDER.intersect.FOLDER

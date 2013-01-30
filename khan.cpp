@@ -11,7 +11,13 @@
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
-string servers[]={"/home/drew/projects/mediakhan/khan_root"};//,"/tmp/dav"};///tmp/dav
+
+/* Peter dir
+DESKTOP: "/tmp/dav/myfiles/khan_root"
+4SHARED: "/tmp/networkedFiles/khan_root"
+*/
+//POINT TO SERVER
+string servers[]={"/tmp/networkedFiles/khan_root"};
 int num_servers = 1;
 
 #define BILLION 1E9
@@ -41,11 +47,9 @@ int redis_calls=0;
 double redis_avg_time=0;
 
 
-int last_id=1;
-
-//redis setup variables
 redisContext *c;
 redisReply *reply=NULL;
+
 
 //voldemort connec0tion setup variables (must be global for continued access)
 list<string> bootstrapUrls;
@@ -53,11 +57,11 @@ string storeName("test");
 ClientConfig *gconfig;
 SocketStoreClientFactory *gfactory;
 auto_ptr<StoreClient> *gclient;
-StoreClient *myclient;
 
-
-
+void voldemort_remove_val(string fileid, string col, string val);
+void redis_remove_val(string fileid, string col, string val);
 char* append_path2(string);
+void union_set(string set1, string set2, string topic);
 
 int get_file_size(string file_name){
 	cout << "in get file size with name:"<<file_name<<endl;
@@ -118,6 +122,543 @@ int count_string(string tobesplit){
 		return count;
 	}
 }
+
+
+int last_id=1;
+StoreClient *myclient;
+
+string redis_getkeys(string col, string val){
+	printf("in1\n");
+	fflush(stdout);
+	log_msg("int getkeys");
+	string key_query=col;
+	cout <<"qeurying:"<<key_query<<"\n";
+	reply = (redisReply *)redisCommand(c,("get "+key_query).c_str());
+	if(reply->len!=0) {
+		log_msg("it got a result2...");
+		log_msg(reply->str);
+		log_msg("done");
+	} else {
+		log_msg("it did not...");
+		return "null";
+	}
+	log_msg("here");
+	log_msg(reply->str);
+	log_msg("there");
+	string output=reply->str;
+	string another="";
+	size_t exact=output.find("~"+val+":");
+	if (exact!=string::npos){
+		another=output.substr(exact);
+		another=another.substr(2+val.length());
+		size_t exact2=another.find("~");
+		if(exact2==string::npos){
+			exact2=another.find("}");
+		}
+		another=another.substr(0,exact2);
+		cout<<"another="<<another<<endl;
+	}
+	//log_msg("get1 success");
+	cout<<"voldemort key value: "<<  output <<"\n";
+	printf("out12\n");
+	fflush(stdout);
+	return another;//return key list of another
+}
+
+string redis_getval(string file_id, string col){
+	cout << "in redis getval with file:"<<file_id<<" and col:"<<col<<endl;
+	reply = (redisReply *)redisCommand(c,("get "+file_id).c_str());
+	if(reply->len!=0) {
+		log_msg("it got a result...");
+	} else {
+		log_msg("it did not...");
+		return "null";
+	}
+	string output=reply->str;
+	cout <<output <<"\n";
+	size_t exact=output.find("~"+col+":");
+	string another="null";
+	if(exact!=string::npos){
+		another=output.substr(exact);
+		another=another.substr(2+col.length());
+		size_t exact2=another.find("~");
+		if(exact2==string::npos){
+			exact2=another.find("}");
+		}
+		another=another.substr(0,exact2);
+		cout<<"another="<<another<<endl;
+	}
+	log_msg("get1 success");
+	cout << "another="<<another<<endl;
+	return another;
+}
+
+string redis_setval(string file_id, string col, string val){
+	cout<<"in redis_setval with file_id:"<<file_id<<" col:"<<col<<" val:"<<val<<endl;
+	if(file_id.compare("null")==0){
+		string out=redis_getval("last_id","val");
+		cout<< "OUT="<<out<<endl;
+		if(out.compare("null")==0){
+			out="1";
+		}
+		cout<< "OUT="<<out<<endl;
+		string file_id=out;
+		last_id=0;
+		last_id=atoi(out.c_str());
+		cout << "OLD LAST ID="<<last_id<<endl;
+		last_id++;//find non-local solution (other table?)
+		ostringstream result;
+		cout << "NEW LAST ID="<<last_id<<endl;
+		result<<last_id;
+		cout << "RESULT="<<result.str()<<endl;
+		redis_remove_val("last_id","val",out);
+		redis_setval("last_id","val",result.str());
+		redis_setval(file_id,col,val);
+		return file_id;
+	}
+
+	cout<<"setting value for file_id:"<<file_id<<endl;
+
+	//handle file_id key
+	reply = (redisReply *)redisCommand(c,("get "+file_id).c_str());
+	string output;
+	if(reply->len!=0){
+		output=reply->str;
+	} else {
+		//create this specific file id
+		output="";
+	}
+	string store=output;
+	cout<<"got "<<output<<endl;
+	string rest;
+	if(store.find("~"+col+":")!=string::npos){//col already set
+		string setval=redis_getval(file_id,col);
+		int len=setval.length();
+		cout<<"col already set to "<<setval<<endl;
+		if(setval.find(val)==string::npos){
+			setval+=":"+val;
+		}
+		store.replace(store.find("~"+col+":")+2+col.length(),len,setval);
+	} else {
+		cout<<"adding col - not already set"<<endl;
+		store+="~"+col+":"+val;
+	}
+	reply = (redisReply *)redisCommand(c,"set %s %s",file_id.c_str(),store.c_str());
+	if(reply->len!=0){
+		cout<<"\n\nset returned:"<< reply->str <<endl;
+	}
+	cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
+
+
+	//handle col key
+	cout<<"qeury for:"<<col<<endl;
+	reply = (redisReply *)redisCommand(c,("get "+col).c_str());
+	output="";
+	if(reply->len!=0){
+		output=reply->str;
+	}
+	store=output;
+	cout<<"returns:"<<store<<endl;
+	rest="";
+	if(store.find("~"+val+":")!=string::npos){//col already set
+		//log_msg("handling col that already has val!");
+		cout<<"old_key:"<<store<<endl;
+		rest=store.substr(store.find("~"+val+":"));
+		rest=rest.substr(val.length()+2);
+		size_t exact2=rest.find("~");
+		if(exact2!=string::npos){
+			rest=rest.substr(0,exact2);
+		}
+		cout<<"original values of val:"<<rest<<endl;
+		size_t orig_length=rest.length();
+		if(rest.find(file_id)==string::npos){
+			rest+=":"+file_id;
+		}
+		cout<<"updated version:"<<rest<<endl;
+		store=store.replace(store.find("~"+val+":")+2+val.length(),orig_length,rest);
+		cout<<"new key:"<<store<<endl;
+	} else {
+		store+="~"+val+":"+file_id;
+	}
+	reply = (redisReply *)redisCommand(c,"set %s %s",col.c_str(),store.c_str());
+	cout<<"put the string "<<store<<" at the key "<<col<<endl;
+	return file_id;
+}
+
+string redis_getkey_values(string col){
+	cout<<"qeury for:"<<col<<endl;
+	reply = (redisReply *)redisCommand(c,("get "+col).c_str());
+	string output="";
+	if(reply->len!=0){
+		output=reply->str;
+	}
+	string ret_val="";
+	cout<<"found col with following:"<<output<<endl;
+	stringstream ss(output);
+	string val;
+	while(getline(ss,val,'~')){
+		cout << "got val = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		while(getline(ss2, val, ':')){
+			ret_val+=val;
+		}
+	}
+	cout << "returning " << ret_val << endl;
+	return ret_val;
+}
+
+string redis_getkey_cols(string col){
+	cout<<"qeury for:"<<col<<endl;
+	reply = (redisReply *)redisCommand(c,("get "+col).c_str());
+	string output="";
+	if(reply->len!=0){
+		output=reply->str;
+	}
+	string ret_val="";
+	cout<<"found col with following:"<<output<<endl;
+	stringstream ss(output);
+	string val;
+	while(getline(ss,val,'~')){
+		cout << "got val = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		ret_val+=val+":";
+	}
+	cout << "returning " << ret_val << endl;
+	return ret_val;
+}
+
+void redis_remove_val(string fileid, string col, string val){
+	string replaced=redis_getval(fileid,col);
+	cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
+	cout << "replaced :"<<replaced<<endl;
+	if(replaced.find(val)!=string::npos){
+		cout<<"its here"<<endl;
+
+		//remove from file entry
+		replaced.replace(replaced.find(val),val.length()+1,"");
+		if(replaced.length()>0 && replaced.at(0)==':'){
+			replaced="~"+col+replaced;
+		} else {
+			replaced="~"+col+":"+replaced;
+		}
+		if((replaced.length()-1)>0){
+			cout<<replaced.length()<<endl;
+			if(replaced.at(replaced.length()-1)==':'){
+				replaced.erase(replaced.length()-1);
+			}
+		}
+		cout<<"new replaced:"<<replaced<<endl;
+		reply = (redisReply *)redisCommand(c,"set %s %s",fileid.c_str(),replaced.c_str());
+
+		//remove from col entry
+		reply = (redisReply *)redisCommand(c,("get "+col).c_str());
+		string sout=reply->str;
+		cout <<"col side:"<<sout<<endl;
+		int len=sout.find("~"+val+":");
+		int len2=sout.find("~",len+1);
+		cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
+		if(len2>0){
+			sout.replace(len,len2-len,"");
+		} else if(len>0) {
+			sout.replace(len,sout.length(),"");
+		} else {
+			sout="";
+		}
+		cout <<"new col:"<<sout<<endl;
+		reply = (redisReply *)redisCommand(c,"set %s %s",col.c_str(),sout.c_str());
+	}
+}
+
+bool redis_init(){
+	struct timeval timeout = { 3600, 0};
+	c=redisConnectWithTimeout((char*)"127.0.0.2",6379, timeout);
+	if(c->err){
+		printf("Connection error: %s\n",c->errstr);
+		return 0;
+	}
+	reply = (redisReply *)redisCommand(c,"PING");
+	printf("PING: %s\n", reply->str);
+	freeReplyObject(reply);
+	return 1;
+}
+
+
+
+string voldemort_getkeys(string col, string val){
+	//log_msg("int getkeys");
+	string key_query=col;
+	cout <<"qeurying:"<<key_query<<"\n";
+	const VersionedValue* result = myclient->get(&key_query);
+	if(result) {
+		//log_msg("it got a result...");
+	} else {
+		//log_msg("it did not...");
+		return "null";
+	}
+	string output=*(result->getValue());
+	cout << output << endl;
+	string another="";
+	size_t exact=output.find("~"+val+":");
+	if (exact!=string::npos){
+		another=output.substr(exact);
+		another=another.substr(2+val.length());
+		size_t exact2=another.find("~");
+		if(exact2==string::npos){
+			exact2=another.find("}");
+		}
+		another=another.substr(0,exact2);
+		cout<<"another="<<another<<endl;
+	}
+	//log_msg("get1 success");
+	cout<<"voldemort key value: "<<  output <<"\n";
+	return another;//return key list of another
+}
+
+string voldemort_getval(string file_id, string col){
+	//log_msg("in getval");
+	const VersionedValue* result2 = myclient->get(&file_id);
+	if(result2) {
+		//log_msg("it got a result...");
+	} else {
+		//log_msg("it did not...");
+		return "null";
+	}
+	string output=*(result2->getValue());
+	cout <<output <<"\n";
+	size_t exact=output.find("~"+col+":");
+	string another="null";
+	if(exact!=string::npos){
+		another=output.substr(exact);
+		another=another.substr(2+col.length());
+		size_t exact2=another.find("~");
+		if(exact2==string::npos){
+			exact2=another.find("}");
+		}
+		another=another.substr(0,exact2);
+		cout<<"another="<<another<<endl;
+	}
+	//log_msg("get1 success");
+	return another;
+}
+
+
+string voldemort_setval(string file_id, string col, string val){
+	cout<<"in vold_setval with file_id:"<<file_id<<" col:"<<col<<" val:"<<val<<endl;
+	if(file_id.compare("null")==0){
+		string out=voldemort_getval("last_id","val");
+		cout<< "OUT="<<out<<endl;
+		if(out.compare("null")==0){
+			out="0";
+		}
+		cout<< "OUT="<<out<<endl;
+		string file_id=out;
+		last_id=0;
+		last_id=atoi(out.c_str());
+		cout << "OLD LAST ID="<<last_id<<endl;
+		last_id++;//find non-local solution (other table?)
+		ostringstream result;
+		cout << "NEW LAST ID="<<last_id<<endl;
+		result<<last_id;
+		cout << "RESULT="<<result.str()<<endl;
+		voldemort_remove_val("last_id","val",out);
+		voldemort_setval("last_id","val",result.str());
+		voldemort_setval(file_id,col,val);
+		return file_id;
+	}
+
+	cout<<"setting value for file_id:"<<file_id<<endl;
+
+	//handle file_id key
+	const VersionedValue* result3 = myclient->get(&file_id);
+	string output;
+	if(result3){
+		output=*(result3->getValue());
+	} else {
+		//create this specific file id
+		output="";
+	}
+	string store=output;
+	cout<<"got "<<output<<endl;
+	string rest;
+	if(store.find("~"+col+":")!=string::npos){//col already set
+		string setval=voldemort_getval(file_id,col);
+		int len=setval.length();
+		cout<<"col already set to "<<setval<<endl;
+		if(setval.find(val)==string::npos){
+			setval+=":"+val;
+		}
+		store.replace(store.find("~"+col+":")+2+col.length(),len,setval);
+	} else {
+		cout<<"adding col - not already set"<<endl;
+		store+="~"+col+":"+val;
+	}
+	myclient->put(&file_id,&store);
+	cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
+
+
+	//handle col key
+	cout<<"qeury for:"<<col<<endl;
+	const VersionedValue* result4 = myclient->get(&col);
+	output="";
+	if(result4){
+		output=*(result4->getValue());
+	}
+	store=output;
+	cout<<"returns:"<<store<<endl;
+	rest="";
+	if(store.find("~"+val+":")!=string::npos){//col already set
+		//log_msg("handling col that already has val!");
+		cout<<"old_key:"<<store<<endl;
+		rest=store.substr(store.find("~"+val+":"));
+		rest=rest.substr(val.length()+2);
+		size_t exact2=rest.find("~");
+		if(exact2!=string::npos){
+			rest=rest.substr(0,exact2);
+		}
+		cout<<"original values of val:"<<rest<<endl;
+		size_t orig_length=rest.length();
+		if(rest.find(file_id)==string::npos){
+			rest+=":"+file_id;
+		}
+		cout<<"updated version:"<<rest<<endl;
+		store=store.replace(store.find("~"+val+":")+2+val.length(),orig_length,rest);
+		cout<<"new key:"<<store<<endl;
+	} else {
+		store+="~"+val+":"+file_id;
+	}
+	myclient->put(&col,&store);
+	cout<<"put the string "<<store<<" at the key "<<col<<endl;
+	return file_id;
+}
+
+string voldemort_getkey_values(string col){
+	cout<<"qeury for:"<<col<<endl;
+	const VersionedValue* result4 = myclient->get(&col);
+	string output="";
+	if(result4){
+		output=*(result4->getValue());
+	}
+	string ret_val="";
+	cout<<"found col with following:"<<output<<endl;
+	stringstream ss(output);
+	string val;
+	while(getline(ss,val,'~')){
+		cout << "got val = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		while(getline(ss2, val, ':')){
+			ret_val+=val;
+		}
+	}
+	cout << "returning " << ret_val << endl;
+	return ret_val;
+}
+
+string voldemort_getkey_cols(string col){
+	cout<<"qeury for:"<<col<<endl;
+	const VersionedValue* result4 = myclient->get(&col);
+	string output="";
+	if(result4){
+		output=*(result4->getValue());
+	}
+	string ret_val="";
+	cout<<"found col with following:"<<output<<endl;
+	stringstream ss(output);
+	string val;
+	while(getline(ss,val,'~')){
+		cout << "got val = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		ret_val+=val+":";
+	}
+	cout << "returning " << ret_val << endl;
+	return ret_val;
+}
+
+void voldemort_remove_val(string fileid, string col, string val){
+	string replaced=voldemort_getval(fileid,col);
+	cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
+	cout << "replaced :"<<replaced<<endl;
+	if(replaced.find(val)!=string::npos){
+		cout<<"its here"<<endl;
+
+		//remove from file entry
+		replaced.replace(replaced.find(val),val.length()+1,"");
+		if(replaced.length()>0 && replaced.at(0)==':'){
+			replaced="~"+col+replaced;
+		} else {
+			replaced="~"+col+":"+replaced;
+		}
+		if((replaced.length()-1)>0){
+			cout<<replaced.length()<<endl;
+			if(replaced.at(replaced.length()-1)==':'){
+				replaced.erase(replaced.length()-1);
+			}
+		}
+		cout<<"new replaced:"<<replaced<<endl;
+		myclient->put(&fileid,&replaced);
+
+		//remove from col entry
+		const VersionedValue* result4 = myclient->get(&col);
+		string sout=*(result4->getValue());
+		cout <<"col side:"<<sout<<endl;
+		int len=sout.find("~"+val+":");
+		int len2=sout.find("~",len+1);
+		cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
+		if(len2>0){
+			sout.replace(len,len2-len,"");
+		} else if(len>0) {
+			sout.replace(len,sout.length(),"");
+		} else {
+			sout="";
+		}
+		cout <<"new col:"<<sout<<endl;
+		myclient->put(&col,&sout);
+		result4=myclient->get(&col);
+		string s2=*(result4->getValue());
+		cout << "did it take?:"<<s2<<endl;
+	}
+}
+
+bool voldemort_init() {
+	//setup voldemort connection
+	list<string> bootstrapUrls;
+	bootstrapUrls.push_back(string("tcp://localhost:6666"));
+	string storeName("test");
+	gconfig=new ClientConfig();
+	gconfig->setBootstrapUrls(&bootstrapUrls);
+	gfactory=new SocketStoreClientFactory(*gconfig);
+	gclient=new auto_ptr<StoreClient>(gfactory->getStoreClient(storeName));
+	myclient=gclient->get();
+
+
+/* Test Cases
+	string key = voldemort_setval("null","col","val");
+	cout<<"insert key returned "<<key<<endl;
+	voldemort_setval(key,"col2","val2");
+	voldemort_setval(key,"col3","val3");
+	voldemort_setval(key,"col4","val4");
+
+	string key2 = voldemort_setval("null","col5","val5");
+	cout<<"insert key returned "<<key2<<endl;
+	voldemort_setval(key2,"col3","val6");
+	voldemort_setval(key2,"col4","val4");
+
+	voldemort_getkeys("col","val");
+	voldemort_getkeys("col3","val6");
+	voldemort_getkeys("col4","val4");
+
+	cout<<"keyvals for col3:"<<voldemort_getkey_cols("col3")<<endl;
+
+	voldemort_getval("0","col2");
+	voldemort_getval("0","col3");
+	voldemort_getval("1","col3");
+*/
+	return 1;
+}
+
 
 bool init_database(){
 	if(DATABASE==VOLDEMORT){
@@ -314,9 +855,13 @@ int initializing_khan(char * mnt_dir) {
 	  	}
   	}
 
-	//using voldemort for the moment
+	//using redis for the moment
 	init_database();
 
+	//locate a previous dump file to use in khan_root (assume it is the last session saved)
+	//copy and paste the dump file from khan_root and put it in redis folder
+	
+		
 	//check if we've loaded metadata before
 	log_msg("attempt to get setup value");
 	string output=database_getval("setup","value");
@@ -330,7 +875,8 @@ int initializing_khan(char * mnt_dir) {
 		clock_gettime(CLOCK_REALTIME,&stop);
 		tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
 		return 0; //setup has happened before, done (eventually check records here)
-	}
+	}	
+		
 
 	//if we have not setup, do so now
 	log_msg("it hasnt happened, setvalue then setup");
@@ -411,6 +957,99 @@ int initializing_khan(char * mnt_dir) {
 	tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
         log_msg("At the end of initialize\n");
         return 0;
+}
+
+//crude union operation
+//set1 and set2 are your existing folder/attr names
+//topic is the set containing set1 and set2
+void union_set(string set1, string set2, string topic){
+	cout<< "Union: " << set1 << " and " << set2 << endl;
+	reply = (redisReply *)redisCommand(c,("get "+ topic).c_str());
+	string output="";
+	if(reply->len!=0){
+		output=reply->str;
+	}
+	string ret_val="Union";
+	cout<<"Everything: "<< output << endl;
+	stringstream ss(output);
+	string val;
+	string contents;
+	while(getline(ss,val,'~')){
+		cout << "A row = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		cout << "This is ... " << val << endl;
+		if(set1.compare(val) == 0){
+			ret_val+=val;
+			while(getline(ss2, val, ':')){
+				contents += val + ":";
+			}
+		}
+		else if(set2.compare(val) == 0){
+			ret_val+=val;
+			while(getline(ss2, val, ':')){
+				contents += val + ":";
+			}
+		}
+	}
+
+	//erase last ':'
+	contents.erase(contents.end()-1, contents.end());
+	cout << " Cool folder name: " << ret_val << endl;
+	cout << " Unioned Contents: " << contents << endl;
+	
+	output += "~" + ret_val + ":" + contents;
+	cout << " This new addition " << output << endl;
+
+	reply = (redisReply *)redisCommand(c,"set %s %s", topic.c_str(), output.c_str());
+}
+
+//crude intersect operation
+//set1 and set2 are your existing folder/attr names
+//topic is the set containing set1 and set2
+void intersect_set(string set1, string set2, string topic){
+	cout<< "Intersect: " << set1 << " and " << set2 << endl;
+	reply = (redisReply *)redisCommand(c,("get "+ topic).c_str());
+	string output="";
+	if(reply->len!=0){
+		output=reply->str;
+	}
+	string ret_val="Intersect";
+	cout<<"Everything: "<< output << endl;
+	stringstream ss(output);
+	string val;
+	string contents;
+	string contents1;
+	string contents2;
+	while(getline(ss,val,'~')){
+		cout << "A row = " << val << endl;
+		stringstream ss2(val);
+		getline(ss2, val, ':');
+		cout << "This is ... " << val << endl;
+		if(set1.compare(val) == 0){
+			ret_val+=val;
+			while(getline(ss2, val, ':')){
+				contents1 += val + ":";
+			}
+		}
+		else if(set2.compare(val) == 0){
+			ret_val+=val;
+			while(getline(ss2, val, ':')){
+				contents2 += val + ":";
+			}
+		}
+	}
+	//erase last ':'
+	contents1.erase(contents1.end()-1, contents1.end());
+	contents2.erase(contents2.end()-1, contents2.end());
+	contents = intersect(contents1, contents2);
+	cout << " Cool folder name: " << ret_val << endl;
+	cout << " Unioned Contents: " << contents << endl;
+	
+	output += "~" + ret_val + ":" + contents;
+	cout << " This new addition " << output << endl;
+
+	reply = (redisReply *)redisCommand(c,"set %s %s", topic.c_str(), output.c_str());
 }
 
 
@@ -1024,7 +1663,9 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev) {
     return 0;
 }
 
-
+/*
+EDIT DONE: Changed to gather redis calls rather than vold calls 
+*/
 static int xmp_mkdir(const char *path, mode_t mode) {
 
 	string strpath=path;
@@ -1033,8 +1674,8 @@ static int xmp_mkdir(const char *path, mode_t mode) {
 		ofstream stfile;
 		stfile.open(stats_file.c_str(), ofstream::out);
 		stfile << "TOT TIME    :" << tot_time << endl;
-		stfile << "Vold Calls   :" << vold_calls << endl;
-		stfile << "     Avg Time:" << vold_avg_time << endl;
+		stfile << "Redis Calls   :" << redis_calls << endl;	//stfile << "Vold Calls   :" << vold_calls << endl;
+		stfile << "     Avg Time:" << redis_avg_time << endl;	//stfile << "     Avg Time:" << vold_avg_time << endl;
 		stfile << "Readdir Calls:" << readdir_calls << endl;
 		stfile << "     Avg Time:" << readdir_avg_time << endl;
 		stfile << "Access Calls :" << access_calls << endl;
@@ -1051,8 +1692,8 @@ static int xmp_mkdir(const char *path, mode_t mode) {
 		stfile << "     Avg Time:" << rename_avg_time << endl;
 		stfile.close();
 		cout << "TOT TIME    :" << tot_time << endl;
-		cout << "Vold Calls   :" << vold_calls << endl;
-		cout << "     Avg Time:" << vold_avg_time << endl;
+		cout << "Redis Calls   :" << redis_calls << endl;	//cout << "Vold Calls   :" << vold_calls << endl;
+	 	cout << "     Avg Time:" << redis_avg_time << endl;	//cout << "     Avg Time:" << vold_avg_time << endl;
 		cout << "Readdir Calls:" << readdir_calls << endl;
 		cout << "     Avg Time:" << readdir_avg_time << endl;
 		cout << "Access Calls :" << access_calls << endl;
@@ -1068,6 +1709,7 @@ static int xmp_mkdir(const char *path, mode_t mode) {
 		cout << "Rename Calls :" << rename_calls << endl;
 		cout << "     Avg Time:" << rename_avg_time << endl;
 		vold_calls=0;
+		redis_calls=0;
 		readdir_calls=0;
 		access_calls=0;
 		getattr_calls=0;
@@ -1077,6 +1719,7 @@ static int xmp_mkdir(const char *path, mode_t mode) {
 		rename_calls=0;
 		tot_time=0;
 		vold_avg_time=0;
+		redis_avg_time=0;
 		readdir_avg_time=0;
 		access_avg_time=0;
 		getattr_avg_time=0;
@@ -1084,6 +1727,168 @@ static int xmp_mkdir(const char *path, mode_t mode) {
 		write_avg_time=0;
 		create_avg_time=0;
 		rename_avg_time=0;
+		return -1;
+	}
+	
+	//force refresh DB !!! REDIS MODE
+	//TODO change this into update
+	else if(strpath.find("refreshall")!=string::npos){
+		//TODO add support for Voldemort
+		//flushs redis DB
+		reply = (redisReply *)redisCommand(c,"flushdb");
+		if(reply->len!=0){
+			log_msg("DB flushed");
+		}
+		//Need this else it will reinit when restarted
+		database_setval("setup","value","true");
+		log_msg("User wants a force refresh of contents...");
+		//reloading metadata
+		for(int i=0; i<num_servers; i++){
+			string line;
+			ifstream filetypes_file((servers[i]+"/filetypes.txt").c_str());
+			getline(filetypes_file, line);
+			while(filetypes_file.good()){
+				cout << "=============== got type =   " << line <<endl;
+				//add into database this file type
+				database_setval("allfiles","types",line);
+				database_setval(line,"attrs","all_"+line+"s");
+				string asetval=database_setval("all_"+line+"sgen","command","basename");
+				string ext=line;
+				getline(filetypes_file,line);
+				const char *firstchar=line.c_str();
+				while(firstchar[0]=='-'){
+					stringstream ss(line.c_str());
+					string attr;
+					getline(ss,attr,'-');
+					getline(ss,attr,':');
+					string command;
+					getline(ss,command,':');
+					cout << "================== checking attr = "<<attr<<endl;
+					cout << "================== checking command = "<<command<<endl;
+					attr=trim(attr);
+					database_setval(ext,"attrs",attr);
+					database_setval(attr+"gen","command",command);
+					getline(filetypes_file,line);
+					firstchar=line.c_str();
+				}
+			}
+
+			string types=database_getval("allfiles","types"); //get all filetypes from voldemort
+			string ext="";
+			cout << "================= types to look for ="<<types<<endl;
+			glob_t files;
+			glob((servers[i]+"/*.*").c_str(),0,NULL,&files); /**/
+			stringstream ss(types.c_str());
+			while(getline(ss,ext,':')){//for each type
+				for(int j=0; j<files.gl_pathc; j++) {
+					cout << "================== checking file = "<<files.gl_pathv[j]<<endl;
+					string file=files.gl_pathv[j];
+					if(strcmp(strrchr(file.c_str(),'.')+1, ext.c_str())==0){
+						string filename=strrchr(file.c_str(),'/')+1;
+						string fileid = database_setval("null","name",filename);
+						//check for existing entries
+						/* NOT EFFECTIVE CAUSES MORE OVERHEAD
+						int Number;
+						string theNumber;
+						if (!(istringstream(fileid) >> Number)) Number = 0;
+						for(int i = 0; i < Number; i++){
+							database_getval(static_cast<ostringstream*>( &(ostringstream() << i) )->str(), token);
+						}
+						*/
+						database_setval(fileid,"ext",ext);
+						database_setval(fileid,"server",servers[i]);
+
+						cout << "=============== file "<< file <<"has ext  =   " << ext <<endl;
+						string attrs=database_getval(ext,"attrs");
+						string token="";
+						stringstream ss2(attrs.c_str());
+						while(getline(ss2,token,':')){
+							if(strcmp(token.c_str(),"null")!=0){
+								cout << "=============== looking at attr =   " << token <<endl;
+								string cmd=database_getval(token+"gen","command");
+								string msg2=(cmd+" "+file).c_str();
+								cout << "=============== issuing command =   " << msg2 <<endl;
+								FILE* stream=popen(msg2.c_str(),"r");
+								if(fgets(msg,200,stream)!=0){
+									cout << "=============== attr value =   " << msg <<endl;
+									database_setval(fileid,token,msg);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		clock_gettime(CLOCK_REALTIME,&stop);
+		tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
+		log_msg("At the end of initialize\n");
+		return -1;
+	}
+	
+	//crude simple union operation example
+	size_t first_per, second_per, found;
+	string temp, set1, set2, topic;
+	if(strpath.find("union")!=string::npos){
+		//find the '.'
+		first_per = strpath.find(".");
+		if(found != string::npos){
+			temp = strpath.substr(0,first_per);
+			//clean string
+			found = temp.find_last_of("/\\");
+			set1 = temp.substr(found+1);
+			//obtain the topic (part of directory)
+			temp = temp.substr(0,found);
+			found = temp.find_last_of("/\\");
+			topic = temp.substr(found+1);
+		}
+		else{
+			log_msg("Malformed Union Command\n");
+			return -1;
+		}
+		//find the second '.' should be after 'union'
+		second_per = strpath.find(".", first_per+1, 1);
+		if(found != string::npos){
+			set2 = strpath.substr(second_per+1);
+		}
+		else{
+			log_msg("Malformed Union Command\n");
+			return -1;
+		}
+		sprintf(msg,"%s UNION %s IN %s\n",set1.c_str(), set2.c_str(), topic.c_str());
+		log_msg(msg);
+		union_set(set1, set2, topic);
+		return -1;
+	}
+
+	else if(strpath.find("intersect")!=string::npos){
+		//find the '.'
+		first_per = strpath.find(".");
+		if(found != string::npos){
+			temp = strpath.substr(0,first_per);
+			//clean string
+			found = temp.find_last_of("/\\");
+			set1 = temp.substr(found+1);
+			//obtain the topic (part of directory)
+			temp = temp.substr(0,found);
+			found = temp.find_last_of("/\\");
+			topic = temp.substr(found+1);
+		}
+		else{
+			log_msg("Malformed Union Command\n");
+			return -1;
+		}
+		//find the second '.' should be after 'union'
+		second_per = strpath.find(".", first_per+1, 1);
+		if(found != string::npos){
+			set2 = strpath.substr(second_per+1);
+		}
+		else{
+			log_msg("Malformed Union Command\n");
+			return -1;
+		}
+		sprintf(msg,"%s INTERSECT %s IN %s\n",set1.c_str(), set2.c_str(), topic.c_str());
+		log_msg(msg);
+		intersect_set(set1, set2, topic);
 		return -1;
 	}
 
@@ -1650,7 +2455,7 @@ static int xmp_removexattr(const char *path, const char *name) {
 }
 #endif /* HAVE_SETXATTR */
 
-
+/* NOT NEEDED?
 struct khan_param {
         unsigned                major;
         unsigned                minor;
@@ -1679,6 +2484,7 @@ static int khan_process_arg(void *data, const char *arg, int key, struct fuse_ar
                		return 1;
         }
 }
+*/
 
 static struct fuse_operations xmp_oper;
 
@@ -1720,7 +2526,7 @@ int main(int argc, char *argv[])
 
 	int retval=0;
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-        struct khan_param param = { 0, 0, NULL, 0 };
+        //struct khan_param param = { 0, 0, NULL, 0 };
         if((argc<2)||(argc>3))
 	{
 		printf("Usage: ./khan <mount_dir_location> [-d]\nAborting...\n");

@@ -11,6 +11,11 @@
 *.so.*
 *.dylib
 
+#cmake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
 # Logs
 logFile
 *.swp

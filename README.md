@@ -14,11 +14,11 @@ A distributed fuse-based media filesystem.
 
 ### 1. Installation
 
-1. Install Voldemort
+1. Install Voldemort (http://www.project-voldemort.com/voldemort/)
  - install oracle-jdk (or openjdk) if you don't have it  
  - install ant if you don't have it
  - run ant in voldemort directory
-2. Install Voldemort C Client.
+2. Install Voldemort C Client (located in the voldemort package under clients)
  - install libtool
  - install libboost-all-dev
  - install libboost-system-dev
@@ -31,14 +31,14 @@ A distributed fuse-based media filesystem.
  - update utils/Makefile LIBS to include -lboost_thread-mt
  - run make
  - run make install
-3. Install Redis.
-4. Install Hiredis.
-5. Install Fuse.
+3. Install Redis (http://redis.io/)
+4. Install Hiredis (https://github.com/redis/hiredis)
+5. Install Fuse (http://fuse.sourceforge.net/)
 6. Get latest source from svn.research.cc.gatech.edu/kaos/khan/branches/media.
  - update paths in khan.h and khan.cpp to point to media (line 57 and 14 respectively)
  - Make
-9. Install mp3info (use to generate metadata -see filetypes.txt)
-10. Install mpg321 (use to play songs)
+9. Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
+10. Install mpg321 (use to play songs) - use sudo apt-get install
 
 ### 2. Client Configuration
 

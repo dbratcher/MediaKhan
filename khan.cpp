@@ -44,18 +44,20 @@ double redis_avg_time=0;
 int last_id=1;
 
 //redis setup variables
+#ifdef REDIS_FOUND
 redisContext *c;
 redisReply *reply=NULL;
+#endif
 
 //voldemort connec0tion setup variables (must be global for continued access)
+#ifdef VOLDEMORT_FOUND
 list<string> bootstrapUrls;
 string storeName("test");
 ClientConfig *gconfig;
 SocketStoreClientFactory *gfactory;
 auto_ptr<StoreClient> *gclient;
 StoreClient *myclient;
-
-
+#endif
 
 char* append_path2(string);
 
@@ -120,11 +122,16 @@ int count_string(string tobesplit){
 }
 
 bool init_database(){
-	if(DATABASE==VOLDEMORT){
+	#ifdef VOLDEMORT_FOUND
+	if(DATABASE==VOLDEMORT) {
 		return voldemort_init();
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		return redis_init();
 	}
+	#endif
 }
 
 string database_setval(string file_id, string col, string val){
@@ -132,6 +139,7 @@ string database_setval(string file_id, string col, string val){
 	file_id=trim(file_id);
 	col=trim(col);
 	val=trim(val);
+	#ifdef VOLDEMORT_FOUND
 	if(DATABASE==VOLDEMORT){
 		vold_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
@@ -142,7 +150,10 @@ string database_setval(string file_id, string col, string val){
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
 		vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
 		return retstring;
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		redis_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
 		string retstring="fail";
@@ -152,12 +163,14 @@ string database_setval(string file_id, string col, string val){
 		redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
 		return retstring;
 	}
+	#endif
 }
 
 string database_getval(string col, string val){
 	log_msg("in getval");
 	col=trim(col);
 	val=trim(val);
+	#ifdef VOLDEMORT_FOUND
 	if(DATABASE==VOLDEMORT){
 		log_msg("using vold");
 		vold_calls++;
@@ -167,7 +180,10 @@ string database_getval(string col, string val){
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
 		vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
 		return retstring;
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		redis_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
 		string retstring=redis_getval(col,val);
@@ -177,11 +193,13 @@ string database_getval(string col, string val){
 		redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
 		return retstring;
 	}
+	#endif
 }
 
 string database_getkeys(string file_id, string col){
 	col=trim(col);
 	file_id=trim(file_id);
+	#ifdef VOLDEMORT_FOUND
 	if(DATABASE==VOLDEMORT){
 		vold_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
@@ -190,7 +208,10 @@ string database_getkeys(string file_id, string col){
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
 		vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
 		return retstring;
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		redis_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
 		string retstring=redis_getkeys(file_id,col);
@@ -199,10 +220,12 @@ string database_getkeys(string file_id, string col){
 		redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
 		return retstring;
 	}
+	#endif
 }
 
 string database_getvals(string col){
 	col=trim(col);
+	#ifdef VOLDEMORT_FOUND
 	if(DATABASE==VOLDEMORT){
 		vold_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
@@ -211,7 +234,10 @@ string database_getvals(string col){
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
 		vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
 		return retstr;
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		redis_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
 		string retstr=redis_getkey_cols(col);
@@ -221,12 +247,14 @@ string database_getvals(string col){
 		redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
 		return retstr;
 	}
+	#endif
 }
 
 void database_remove_val(string file, string col, string val){
 	file=trim(file);
 	col=trim(col);
 	val=trim(val);
+	#ifdef VOLDEMORT_FOUND
 	if(DATABASE==VOLDEMORT){
 		vold_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
@@ -235,7 +263,10 @@ void database_remove_val(string file, string col, string val){
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
 		vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
 		return;
-	} else if(DATABASE==REDIS){
+	}
+	#endif
+	#ifdef REDIS_FOUND
+	if(DATABASE==REDIS){
 		redis_calls++;
 		clock_gettime(CLOCK_REALTIME,&start);
 		redis_remove_val(file,col,val);
@@ -245,6 +276,7 @@ void database_remove_val(string file, string col, string val){
 		return;
 	}
 	return;
+	#endif
 }
 
 

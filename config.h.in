@@ -1,0 +1,2 @@
+#cmakedefine VOLDEMORT_FOUND
+#cmakedefine REDIS_FOUND

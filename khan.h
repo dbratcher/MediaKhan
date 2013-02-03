@@ -1,3 +1,4 @@
+#include "config.h"
 #include "params.h"
 #include <sys/stat.h>
 #include <string.h>
@@ -31,8 +32,14 @@
 #include <glob.h>
 
 #include "log.h"
-#include "redis.h"
-#include "voldemort.h"
+
+#ifdef REDIS_FOUND
+  #include "redis.h"
+#endif
+
+#ifdef VOLDEMORT_FOUND
+  #include "voldemort.h"
+#endif
 
 using namespace std;
 

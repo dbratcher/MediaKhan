@@ -1,2 +1,3 @@
 #cmakedefine VOLDEMORT_FOUND
 #cmakedefine REDIS_FOUND
+#cmakedefine MACH_TIME

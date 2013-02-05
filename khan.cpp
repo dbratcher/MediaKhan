@@ -9,9 +9,21 @@
 #define REDIS 2
 #define DATABASE REDIS
 
+#ifdef MACH_TIME
+  int clock_gettime(int i, struct timespec* b) {
+    return 0;
+  }
+
+  char* strdup(const char* str) {
+    char* newstr = (char*)malloc(strlen(str)+1);
+    strcpy(newstr, str);
+    return newstr;
+  }
+#endif
+
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
-string servers[]={"/home/drew/projects/mediakhan/khan_root"};//,"/tmp/dav"};///tmp/dav
+string servers[]={"/Users/drewbratcher/projects/mediakhan_git/khan_root"};//,"/tmp/dav"};///tmp/dav
 int num_servers = 1;
 
 #define BILLION 1E9
@@ -63,7 +75,8 @@ char* append_path2(string);
 
 int get_file_size(string file_name){
 	cout << "in get file size with name:"<<file_name<<endl;
-	string base=basename(strdup(file_name.c_str()));
+	string tempbase = file_name;
+        string base=basename(strdup(tempbase.c_str()));
 	cout << "steal base:"<<base<<endl;
 	string path=append_path2(base);
 	cout << "create path:"<<path<<endl;
@@ -305,7 +318,11 @@ char* append_path2(string newp) {
 static void unmounting(char * mnt_dir) {
 	log_msg("in umounting");
 	    log_msg("In UMOUNT\n");
-            sprintf(command,"fusermount -u %s\n",mnt_dir);
+            #ifdef MACH_TIME
+                sprintf(command, "umount %s\n",mnt_dir);
+            #else
+                sprintf(command,"fusermount -u %s\n",mnt_dir);
+            #endif
             if (system(command) < 0) {	
 		sprintf(msg,"Could not unmount last mounted directory!\n");
 	        log_msg(msg);
@@ -344,7 +361,9 @@ int initializing_khan(char * mnt_dir) {
 			log_msg("Unable to create storage directory...Aborting\n");
 		   	exit(1);
 	  	}
-  	}
+  	} else {
+            fprintf(stderr, "directory opened successfully\n");
+        }
 
 	//using voldemort for the moment
 	init_database();
@@ -1138,9 +1157,9 @@ static int xmp_readlink(const char *path, char *buf, size_t size) {
         log_msg("xmp_readlink");
 	//TODO: handle in vold somehow
 	log_msg("In readlink\n");
-        int res;
+        int res = -1;
         path=append_path2(basename(strdup(path)));
-        res = readlink(path, buf, size - 1);
+        //res = readlink(path, buf, size - 1);
         if (res == -1)
                 return -errno;
         buf[res] = '\0';
@@ -1200,12 +1219,12 @@ static int xmp_rmdir(const char *path) {
 static int xmp_symlink(const char *from, const char *to) {
 	log_msg("in xmp_symlink");
 	//TODO: handle in vold somehow
-	int res;
+	int res=-1;
 	from=append_path2(basename(strdup(from)));
         to=append_path2(basename(strdup(to)));
         sprintf(msg,"In symlink creating a symbolic link from %s to %s\n",from, to);
 	log_msg(msg);
-	res = symlink(from, to);
+	//res = symlink(from, to);
 	if (res == -1)
 		return -errno;
 	return 0;

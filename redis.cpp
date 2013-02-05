@@ -5,8 +5,9 @@ extern redisContext *c;
 extern redisReply *reply;
 
 bool redis_init(){
+         fprintf(stderr, "in redis init\n");
          struct timeval timeout = { 3600, 0};
-         c=redisConnectWithTimeout((char*)"127.0.0.2",6379, timeout);
+         c=redisConnectWithTimeout((char*)"127.0.0.1",6379, timeout); //odd - there was a 2 here....
          if(c->err){
                  printf("Connection error: %s\n",c->errstr);
                  return 0;
@@ -14,6 +15,7 @@ bool redis_init(){
          reply = (redisReply *)redisCommand(c,"PING");
          printf("PING: %s\n", reply->str);
          freeReplyObject(reply);
+         fprintf(stderr, "exit redis init\n");
          return 1;
 }
 

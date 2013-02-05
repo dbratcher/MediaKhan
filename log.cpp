@@ -23,6 +23,7 @@ int log_open() {
 }
 
 void log_msg(const char *msg) {
+    fprintf(stderr, "%s\n", msg);
     fprintf(fileDescriptor, "%s\n",msg);
     fflush(fileDescriptor);
 }

@@ -1,10 +1,8 @@
 #include "config.h"
 #include "params.h"
 #include <sys/stat.h>
-#include <string.h>
 #include <sys/types.h>
 #include <fuse.h>
-#include <ulockmgr.h> /**/
 #include <vector>
 #include <functional>
 #include <errno.h>
@@ -30,6 +28,7 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <glob.h>
+#include <string.h>
 
 #include "log.h"
 
@@ -41,6 +40,10 @@
   #include "voldemort.h"
 #endif
 
+#ifdef MACH_TIME
+    #define CLOCK_REALTIME 1
+#endif
+
 using namespace std;
 
 #define MAX_LEN 4096 
@@ -50,7 +53,7 @@ using namespace std;
 
 static char command[MAX_PATH_LENGTH];
 static struct khan_state *khan_data=NULL;
-string khan_root="/home/drew/projects/mediakhan/khan_root";
+string khan_root="/Users/drewbratcher/projects/mediakhan_git/khan_root";
 
      time_t time_now;
        static char * fpath=NULL;

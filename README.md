@@ -14,31 +14,34 @@ A distributed fuse-based media filesystem.
 
 ### 1. Installation
 
-1. Install Voldemort (http://www.project-voldemort.com/voldemort/)
- - install oracle-jdk (or openjdk) if you don't have it  
- - install ant if you don't have it
- - run ant in voldemort directory
-2. Install Voldemort C Client (located in the voldemort package under clients)
- - install libtool
- - install libboost-all-dev
- - install libboost-system-dev
- - install libprotobuf-dev
- - install libboost-doc
- - install doxygen
- - install automake	
- - run ./autogen.sh 
- - run ./configure
- - update utils/Makefile LIBS to include -lboost_thread-mt
- - run make
- - run make install
-3. Install Redis (http://redis.io/)
-4. Install Hiredis (https://github.com/redis/hiredis)
-5. Install Fuse (http://fuse.sourceforge.net/)
-6. Get latest source from svn.research.cc.gatech.edu/kaos/khan/branches/media.
- - update paths in khan.h and khan.cpp to point to media (line 57 and 14 respectively)
- - Make
-9. Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
-10. Install mpg321 (use to play songs) - use sudo apt-get install
+1. Install at least one database (Voldemort and/or Redis):
+ - Install Voldemort (http://www.project-voldemort.com/voldemort/)
+ -- install oracle-jdk (or openjdk) if you don't have it  
+ -- install ant if you don't have it
+ -- run ant in voldemort directory
+ - Install Redis (http://redis.io/)
+2. Install C Clients for Installed Databases:
+ - Install Voldemort C Client (located in the voldemort package under clients)
+ -- install libtool
+ -- install libboost-all-dev
+ -- install libboost-system-dev
+ -- install libprotobuf-dev
+ -- install libboost-doc
+ -- install doxygen
+ -- install automake	
+ -- run ./autogen.sh 
+ -- run ./configure
+ -- update utils/Makefile LIBS to include -lboost_thread-mt
+ -- run make
+ -- run make install
+ - Install Hiredis (https://github.com/redis/hiredis)
+3. Install Fuse (http://fuse.sourceforge.net/)
+4. Get latest source from https://github.com/dbratcher/MediaKhan.
+ - update paths in stores.txt to point to media
+ - cmake .
+ - make
+5. Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
+6. Install mpg321 (use to play songs) - use sudo apt-get install
 
 ### 2. Client Configuration
 

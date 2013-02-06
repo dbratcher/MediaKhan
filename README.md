@@ -14,40 +14,40 @@ A distributed fuse-based media filesystem.
 
 ### 1. Installation
 
-1. Install at least one database (Voldemort and/or Redis):
- - Install Voldemort (http://www.project-voldemort.com/voldemort/)
- -- install oracle-jdk (or openjdk) if you don't have it  
- -- install ant if you don't have it
- -- run ant in voldemort directory
- - Install Redis (http://redis.io/)
-2. Install C Clients for Installed Databases:
- - Install Voldemort C Client (located in the voldemort package under clients)
- -- install libtool
- -- install libboost-all-dev
- -- install libboost-system-dev
- -- install libprotobuf-dev
- -- install libboost-doc
- -- install doxygen
- -- install automake	
- -- run ./autogen.sh 
- -- run ./configure
- -- update utils/Makefile LIBS to include -lboost_thread-mt
- -- run make
- -- run make install
- - Install Hiredis (https://github.com/redis/hiredis)
-3. Install Fuse (http://fuse.sourceforge.net/)
-4. Get latest source from https://github.com/dbratcher/MediaKhan.
- - update paths in stores.txt to point to media
- - cmake .
- - make
-5. Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
-6. Install mpg321 (use to play songs) - use sudo apt-get install
+- Install at least one database (Voldemort and/or Redis):
+    - Install Voldemort (http://www.project-voldemort.com/voldemort/)
+        - install oracle-jdk (or openjdk) if you don't have it  
+        - install ant if you don't have it
+        - run ant in voldemort directory
+    - Install Redis (http://redis.io/)
+- Install C Clients for Installed Databases:
+    - Install Voldemort C Client (located in the voldemort package under clients)
+        - install libtool
+        - install libboost-all-dev
+        - install libboost-system-dev
+        - install libprotobuf-dev
+        - install libboost-doc
+        - install doxygen
+        - install automake	
+        - run ./autogen.sh 
+        - run ./configure
+        - update utils/Makefile LIBS to include -lboost_thread-mt
+        - run make
+        - run make install
+    - Install Hiredis (https://github.com/redis/hiredis)
+- Install Fuse (http://fuse.sourceforge.net/)
+- Get latest source from https://github.com/dbratcher/MediaKhan.
+    - update paths in stores.txt to point to media
+    - cmake .
+    - make
+- Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
+- Install mpg321 (use to play songs) - use sudo apt-get install
 
 ### 2. Client Configuration
 
 1. Pick a Server
- - Run Voldemort Server. Khan assumes server is at localhost:6666
- - Or run Redis Server. Edit khan.cpp to reflect what sort of database you are using.
+    - Run Voldemort Server. Khan assumes server is at localhost:6666
+    - Or run Redis Server. Edit khan.cpp to reflect what sort of database you are using.
 2. Create /tmp/fuse/ if necessary
 3. Call ./khan /tmp/fuse/ -d. (will show debug messages for filesystem - type mkdir stats to see timing info)
 4. Look at /tmp/fuse to see filesystem in another prompt.

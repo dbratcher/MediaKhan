@@ -23,7 +23,7 @@
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
-string servers[]={"/Users/drewbratcher/projects/mediakhan_git/khan_root"};//,"/tmp/dav"};///tmp/dav
+string servers[5];
 int num_servers = 1;
 
 #define BILLION 1E9
@@ -294,11 +294,11 @@ void database_remove_val(string file, string col, string val){
 
 
 char* append_path(const char * newp) {
-	sprintf(msg,"in append_path with %s and %s",khan_root.c_str(),newp);
+	sprintf(msg,"in append_path with %s and %s",servers[0].c_str(),newp);
 	log_msg(msg);
 	fpath=(char*)malloc(MAX_PATH_LENGTH);
 	    memset(fpath,0,MAX_PATH_LENGTH);
-    	    sprintf(&fpath[0],"%s%s",khan_root.c_str(),newp);
+    	    sprintf(&fpath[0],"%s%s",servers[0].c_str(),newp);
 	//log_msg("returning");
             return fpath;
 }
@@ -351,12 +351,12 @@ int initializing_khan(char * mnt_dir) {
 	signal(SIGKILL,CleanUpKhan);
 
         //Opening root directory and creating if not present
-	cout<<"khan_root is "<<khan_root<<endl;
-        if(NULL == opendir(khan_root.c_str()))  {
+	cout<<"khan_root is "<<servers[0]<<endl;
+        if(NULL == opendir(servers[0].c_str()))  {
          	sprintf(msg,"Error msg on opening directory : %s\n",strerror(errno));
            	log_msg(msg);
 	   	log_msg("Root directory might not exist..Creating\n");
-           	sprintf(&command[0],"mkdir %s",khan_root.c_str());
+           	sprintf(&command[0],"mkdir %s",servers[0].c_str());
            	if (system(command) < 0) {
 			log_msg("Unable to create storage directory...Aborting\n");
 		   	exit(1);
@@ -1491,10 +1491,10 @@ static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi)
 void *khan_init(struct fuse_conn_info *conn) {
 
     log_msg("khan_init() called!\n");
-    sprintf(msg,"khan_root is : %s\n",khan_root.c_str());log_msg(msg);
-    if(chdir(khan_root.c_str())<0) {
+    sprintf(msg,"khan_root is : %s\n",servers[0].c_str());log_msg(msg);
+    if(chdir(servers[0].c_str())<0) {
        sprintf(msg,"could not change directory ,errno %s\n",strerror(errno)); log_msg(msg);
-       perror(khan_root.c_str());
+       perror(servers[0].c_str());
     }
     sprintf(msg,"AT THE END OF INIT\n"); log_msg(msg);
     return KHAN_DATA;
@@ -1770,13 +1770,31 @@ int main(int argc, char *argv[])
 
 
 	int retval=0;
-        struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         struct khan_param param = { 0, 0, NULL, 0 };
-        if((argc<2)||(argc>3))
+        if((argc<3)||(argc>4))
 	{
-		printf("Usage: ./khan <mount_dir_location> [-d]\nAborting...\n");
+		printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
 		exit(1);
 	}
+         struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
+         int j;
+         char* store_filename=NULL;
+         for(j = 0; j < argc; j++) {
+             if (j == 2)
+                     store_filename = argv[j];
+             else
+                     fuse_opt_add_arg(&args, argv[j]);
+         }
+     
+         fprintf(stderr, "%s\n\n\n\n", store_filename);
+         FILE* stores = fopen(store_filename, "r");
+         int i=0;
+         char buffer[100];
+         while(fscanf(stores, "%s\n", buffer)!=EOF) {
+            servers[i] = buffer;
+            i++;
+         }
+         fclose(stores);
          umask(0);
          if(-1==log_open()) {
 		      printf("Unable to open the log file..NO log would be recorded..!\n");
@@ -1792,7 +1810,7 @@ int main(int argc, char *argv[])
 	  	      return -1;
 	 }
 	 log_msg("initialized....");
-         retval=fuse_main(argc,argv, &xmp_oper, khan_data);
+         retval=fuse_main(args.argc,args.argv, &xmp_oper, khan_data);
          log_msg("Done with fuse_main...\n");
 	 return retval;
 }

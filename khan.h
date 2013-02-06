@@ -53,7 +53,6 @@ using namespace std;
 
 static char command[MAX_PATH_LENGTH];
 static struct khan_state *khan_data=NULL;
-string khan_root="/Users/drewbratcher/projects/mediakhan_git/khan_root";
 
      time_t time_now;
        static char * fpath=NULL;

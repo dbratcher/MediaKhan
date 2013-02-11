@@ -1,3 +1,0 @@
-#define VOLDEMORT_FOUND
-#define REDIS_FOUND
-#define MACH_TIME

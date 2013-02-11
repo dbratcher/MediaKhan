@@ -351,7 +351,7 @@ int initializing_khan(char * mnt_dir) {
 	signal(SIGKILL,CleanUpKhan);
 
         //Opening root directory and creating if not present
-	cout<<"khan_root is "<<servers[0]<<endl;
+	cout<<"khan_root[0] is "<<servers[0]<<endl;
         if(NULL == opendir(servers[0].c_str()))  {
          	sprintf(msg,"Error msg on opening directory : %s\n",strerror(errno));
            	log_msg(msg);

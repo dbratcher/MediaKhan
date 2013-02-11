@@ -365,7 +365,6 @@ int initializing_khan(char * mnt_dir) {
             fprintf(stderr, "directory opened successfully\n");
         }
 
-	//using voldemort for the moment
 	init_database();
 
 	//check if we've loaded metadata before

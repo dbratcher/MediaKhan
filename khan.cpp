@@ -9,7 +9,9 @@
 #define REDIS 2
 #define DATABASE REDIS
 
-#ifdef MACH_TIME
+#define log stderr
+
+#ifdef APPLE
   int clock_gettime(int i, struct timespec* b) {
     return 0;
   }
@@ -74,12 +76,9 @@ StoreClient *myclient;
 char* append_path2(string);
 
 int get_file_size(string file_name){
-	cout << "in get file size with name:"<<file_name<<endl;
 	string tempbase = file_name;
         string base=basename(strdup(tempbase.c_str()));
-	cout << "steal base:"<<base<<endl;
 	string path=append_path2(base);
-	cout << "create path:"<<path<<endl;
 	struct stat st;
 	stat(path.c_str(), &st);
 	return st.st_size;
@@ -180,7 +179,7 @@ string database_setval(string file_id, string col, string val){
 }
 
 string database_getval(string col, string val){
-	log_msg("in getval");
+	fprintf(stderr, "in getval with %s %s", col.c_str(), val.c_str());
 	col=trim(col);
 	val=trim(val);
 	#ifdef VOLDEMORT_FOUND
@@ -452,6 +451,7 @@ int initializing_khan(char * mnt_dir) {
 								cout << "=============== attr value =   " << msg <<endl;
 								database_setval(fileid,token,msg);
 							}
+                                                        pclose(stream);
 						}
 					}
 				}
@@ -501,20 +501,16 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
         calc_time_start(&getattr_calls);
 	int res=0;
 
-        sprintf(msg,"In xmp_getattr for path:%s\n",path);
-	log_msg(msg);
-
-	if(0 == strcmp(path,"/")) {
-		log_msg("looking at root");
-		stbuf->st_mode=S_IFDIR | 0555;
-		string types=database_getval("allfiles","types");
-		cout <<types;
-		cout << "+++++++++++++++++++++ here is the count " << count_string(types)<< endl;
-		stbuf->st_nlink=count_string(types);
-		stbuf->st_size=4096;
-		calc_time_stop(&getattr_calls, &getattr_avg_time);
-		return 0;
-	}
+        fprintf(log,"In xmp_getattr with path:%s\n",path);
+	stbuf->st_mode = S_IFDIR | 0555;
+	string types = database_getval("allfiles","types");
+	fprintf(log, "types: %s\n", types.c_str());
+        fprintf(log, "# types: %d\n", count_string(types));
+	stbuf->st_nlink=count_string(types);
+	stbuf->st_size=4096;
+	calc_time_stop(&getattr_calls, &getattr_avg_time);
+	return 0;
+	// above should only be if equal to root, otherwise do below
 
 	string dirs=database_getval("alldirs","paths");
 	stringstream dd(dirs);
@@ -676,13 +672,11 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
 {
 	calc_time_start(&readdir_calls);
-	sprintf(msg,"in xmp readdir with path %s",path);
-	log_msg(msg);
+	fprintf(log, "in xmp readdir with path %s", path);
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 
-
-	//spit out user added dirs (not attr based)
+	/* user added dirs (not attr based)
 	string dirs=database_getval("alldirs","paths");
 	string toka="";
 	stringstream dd(dirs);
@@ -695,7 +689,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t
 		if(strcmp(dpath,path)==0){
 			filler(buf, dir, NULL, 0);
 		}
-	}
+	} */
 
 	//decompose path
 	stringstream ss0(path+1);
@@ -930,17 +924,15 @@ int khan_open(const char *path, struct fuse_file_info *fi)
 
 int xmp_access(const char *path, int mask)
 {
-	calc_time_start(&access_calls);
-	log_msg("in xmp_access");
+    calc_time_start(&access_calls);
+    fprintf(log, "in xmp_access with path: %s\n", path);
 
-    sprintf(msg,"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\nKHAN_ACCESS : PATH =%s\n",path);
-    log_msg(msg);
     char *path_copy=strdup(path);
-	if(strcmp(path,"/")==0) {
-		log_msg("at root");
-		calc_time_stop(&access_calls, &access_avg_time);
-		return 0;
-	}
+//  if(strcmp(path,"/")==0) {
+        log_msg("at root");
+        calc_time_stop(&access_calls, &access_avg_time);
+        return 0;
+//	}
 
 	string dirs=database_getval("alldirs","paths");
 	string temptok="";
@@ -1192,6 +1184,7 @@ static int xmp_unlink(const char *path) {
 				if(fgets(msg,200,stream)!=0){
 					database_remove_val(fileid,token,msg);
 				}
+                                pclose(stream);
 			}
 		}
 
@@ -1266,6 +1259,7 @@ static int xmp_rename(const char *from, const char *to) {
 				if(fgets(msg,200,stream)!=0){
 					database_remove_val(fileid,token,msg);
 				}
+                                pclose(stream);
 			}
 		}
 		//remove from from database
@@ -1438,11 +1432,11 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 		clock_gettime(CLOCK_REALTIME,&stop);
 		time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
 		write_avg_time=(write_avg_time*(write_calls-1)+time_spent)/write_calls;
-		return -errno;
+		return errno;
 	}
 	res = pwrite(fd, buf, size, offset);
 	if (res == -1)
-		res = -errno;
+		res = errno;
 	close(fd);
 	clock_gettime(CLOCK_REALTIME,&stop);
 	time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
@@ -1451,40 +1445,26 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 }
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf) {
-	log_msg("in xmp_stratfs");
-
-    path=append_path2(basename(strdup(path)));
-    sprintf(msg,"\nstatfs - %s\n", path);
-    log_msg(msg);
-    int res;
-    res = statvfs(path, stbuf);
-    if (res == -1) {
-		sprintf(msg, "statfs error for %s\n",path);
-		log_msg(msg);
-                return -errno;
+    /* Pass the call through to the underlying system which has the media. */
+    fprintf(log, "in xmp_statfs with path %s\n", path);
+    int res = statvfs(path, stbuf);
+    if (res != 0) {
+        fprintf(log, "statfs error for %s\n",path);
+        return errno;
     }
     return 0;
 }
 
 static int xmp_release(const char *path, struct fuse_file_info *fi) {
-	log_msg("in xmp_release");
-	/* Just a stub.	 This method is optional and can safely be left
-	   unimplemented */
-        path++;
-	(void) path;
-	(void) fi;
-	return 0;
+    /* Just a stub. This method is optional and can safely be left unimplemented. */
+    fprintf(log, "in xmp_release with path %s\n", path);
+    return 0;
 }
 
-static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi){
-	log_msg("in xmp_fsync");
-	/* Just a stub.	 This method is optional and can safely be left
-	   unimplemented */
-        path++;
-	(void) path;
-	(void) isdatasync;
-	(void) fi;
-	return 0;
+static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi) {
+    /* Just a stub. This method is optional and can safely be left unimplemented. */
+    fprintf(log, "in xmp_fsync with path %s\n", path);
+    return 0;
 }
 
 
@@ -1525,6 +1505,7 @@ int khan_flush (const char * path, struct fuse_file_info * info ) {
 					cout << "=============== attr value =   " << msg <<endl;
 					database_setval(fileid,token,msg);
 				}
+                                pclose(stream);
 			}
 		}
 	}
@@ -1577,6 +1558,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 					cout << "=============== attr value =   " << msg <<endl;
 					database_setval(fileid,token,msg);
 				}
+                                pclose(stream);
 			}
 		}
 	} else {

@@ -20,8 +20,6 @@ if(REDIS_FOUND)
 endif()
 check_include_files(hiredis/hiredis.h REDIS_FOUND)
 
-check_include_files(mach/mach_time.h MACH_TIME)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if(VOLDEMORT_FOUND AND REDIS_FOUND)

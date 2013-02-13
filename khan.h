@@ -40,7 +40,9 @@
   #include "voldemort.h"
 #endif
 
-#ifdef MACH_TIME
+#ifdef APPLE
+    #include <sys/statvfs.h>
+    #include <sys/dir.h>
     #define CLOCK_REALTIME 1
 #endif
 

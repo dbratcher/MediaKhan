@@ -25,7 +25,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DI
 if(VOLDEMORT_FOUND AND REDIS_FOUND)
 	message("compiling for both redis and voldemort...")
 	add_executable(khan khan.cpp redis.cpp voldemort.cpp log.cpp)
-	target_link_libraries(khan fuse voldemort hiredis)
+	target_link_libraries(khan fuse hiredis voldemort)
 elseif(VOLDEMORT_FOUND)
 	message("compiling for voldmort only...")
 	add_executable(khan khan.cpp voldemort.cpp log.cpp)

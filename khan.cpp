@@ -1794,9 +1794,9 @@ int main(int argc, char *argv[])
 
   int retval=0;
         struct khan_param param = { 0, 0, NULL, 0 };
-        if((argc<3)||(argc>4))
+        if((argc<3)||(argc>5))
   {
-    printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
+    printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d] [-s]\nAborting...\n");
     exit(1);
   }
          struct fuse_args args = FUSE_ARGS_INIT(0, NULL);

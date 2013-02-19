@@ -490,22 +490,19 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-static int xmp_getattr(const char *path, struct stat *stbuf)
-{
-        calc_time_start(&getattr_calls);
-  int res=0;
-
-        fprintf(log,"In xmp_getattr with path:%s\n",path);
+static int xmp_getattr(const char *path, struct stat *stbuf) {
+  calc_time_start(&getattr_calls);
+  fprintf(log,"In xmp_getattr with path:%s\n",path);
+  memset(stbuf, 0, sizeof(struct stat));
   if(strcmp(path,"/")==0) {
-            stbuf->st_mode = S_IFDIR | 0555;
-      string types = database_getval("allfiles","types");
-      fprintf(log, "types: %s\n", types.c_str());
-            fprintf(log, "# types: %d\n", count_string(types));
-      stbuf->st_nlink=count_string(types);
-      stbuf->st_size=4096;
-      calc_time_stop(&getattr_calls, &getattr_avg_time);
-      return 0;
-        }
+    stbuf->st_mode = S_IFDIR | 0755;
+    string types = database_getval("allfiles","types");
+    stbuf->st_nlink=count_string(types);
+    stbuf->st_size=4096;
+    calc_time_stop(&getattr_calls, &getattr_avg_time);
+    return 0;
+  }
+  int res=0;
   string dirs=database_getval("alldirs","paths");
   stringstream dd(dirs);
   string tok;
@@ -513,7 +510,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
     cout<<"comparing "<<tok<<","<<path<<endl;
     if(strcmp(path,tok.c_str())==0){
       cout<<"found!"<<endl;
-      stbuf->st_mode=S_IFDIR | 0555;
+      stbuf->st_mode=S_IFDIR | 0755;
       stbuf->st_nlink=0;
       stbuf->st_size=4096;
       calc_time_stop(&getattr_calls, &getattr_avg_time);
@@ -557,7 +554,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 
 
           if(!aint) {
-            stbuf->st_mode=S_IFDIR | 0555;
+            stbuf->st_mode=S_IFDIR | 0755;
             stbuf->st_nlink=count_string(attrs);
             stbuf->st_size=4096;
             calc_time_stop(&getattr_calls, &getattr_avg_time);
@@ -572,8 +569,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
                 //check val (loop this and attr later)
                 if(!vint){
                   cout << "matched an attr path"<<endl;
-                  stbuf->st_mode=S_IFDIR | 0555;
+                  stbuf->st_mode=S_IFDIR | 0755;
                   stbuf->st_nlink=count_string(vals);
+                  stbuf->st_size=4096;
                   calc_time_stop(&getattr_calls, &getattr_avg_time);
                   return 0;
                 } else {
@@ -618,8 +616,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
                               if(mint) {
                                 found=1;
                               } else {
-                                stbuf->st_mode=S_IFDIR | 0555;
+                                stbuf->st_mode=S_IFDIR | 0755;
                                 stbuf->st_nlink=count_string(attrs);
+                                stbuf->st_size=4096;
                                 calc_time_stop(&getattr_calls, &getattr_avg_time);
                                 return 0;
                               }
@@ -636,8 +635,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
                           calc_time_stop(&getattr_calls, &getattr_avg_time);
                           return 0;
                         } else {
-                          stbuf->st_mode=S_IFDIR | 0555;
+                          stbuf->st_mode=S_IFDIR | 0755;
                           stbuf->st_nlink=count_string(files);
+                          stbuf->st_size=4096;
                           calc_time_stop(&getattr_calls, &getattr_avg_time);
                           return 0;
                         }
@@ -1751,9 +1751,7 @@ int main(int argc, char *argv[])
 {
   xmp_oper.getattr  = xmp_getattr;
   xmp_oper.init     = khan_init;
-#ifndef APPLE
-    xmp_oper.access    = xmp_access;
-#endif
+  xmp_oper.access    = xmp_access;
   xmp_oper.readlink  = xmp_readlink;
   xmp_oper.readdir  = xmp_readdir;
   xmp_oper.mknod    = xmp_mknod;

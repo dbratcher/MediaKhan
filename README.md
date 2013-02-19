@@ -35,7 +35,7 @@ A distributed fuse-based media filesystem.
         - run make
         - run make install
     - Install Hiredis (https://github.com/redis/hiredis)
-- Install Fuse (http://fuse.sourceforge.net/)
+- Install Fuse (http://fuse.sourceforge.net/) or OSXFuse for macs (http://osxfuse.github.com/)
 - Get latest source from https://github.com/dbratcher/MediaKhan.
     - update paths in stores.txt to point to media
     - cmake .
@@ -49,7 +49,7 @@ A distributed fuse-based media filesystem.
     - Run Voldemort Server. Khan assumes server is at localhost:6666
     - Or run Redis Server. Edit khan.cpp to reflect what sort of database you are using.
 2. Create /tmp/fuse/ if necessary
-3. Call ./khan /tmp/fuse/ -d. (will show debug messages for filesystem - type mkdir stats to see timing info)
+3. Call ./khan /tmp/fuse/ -d. (will show debug messages for filesystem - type mkdir stats to see timing info) On MacOSX use -s instead of -d, or if you must see the debug output use -s and -d and only view the system through Finder. (the terminal causes it to crash occasionally when in debug mode)
 4. Look at /tmp/fuse to see filesystem in another prompt.
 
 ### 3. Server Configuration

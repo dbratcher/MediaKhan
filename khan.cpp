@@ -317,7 +317,7 @@ char* append_path2(string newp) {
 static void unmounting(char * mnt_dir) {
   log_msg("in umounting");
       log_msg("In UMOUNT\n");
-            #ifdef MACH_TIME
+            #ifdef APPLE
                 sprintf(command, "umount %s\n",mnt_dir);
             #else
                 sprintf(command,"fusermount -u %s\n",mnt_dir);

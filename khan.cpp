@@ -1469,8 +1469,6 @@ static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi)
 
 void *khan_init(struct fuse_conn_info *conn) {
 
-    FUSE_ENABLE_SETVOLNAME(conn);
-    FUSE_ENABLE_XTIMES(conn);
     log_msg("khan_init() called!\n");
     sprintf(msg,"khan_root is : %s\n",servers[0].c_str());log_msg(msg);
     if(chdir(servers[0].c_str())<0) {
@@ -1774,11 +1772,11 @@ int main(int argc, char *argv[])
   xmp_oper.fsync    = xmp_fsync;
         xmp_oper.opendir  = khan_opendir;
   xmp_oper.flush    = khan_flush;
+#ifdef APPLE
   xmp_oper.setxattr  = xmp_setxattr;
   xmp_oper.getxattr  = xmp_getxattr;
   xmp_oper.listxattr  = xmp_listxattr;
   xmp_oper.removexattr  = xmp_removexattr;
-#ifdef APPLE
         xmp_oper.setvolname     = xmp_setvolname;
         xmp_oper.exchange       = xmp_exchange;
         xmp_oper.getxtimes      = xmp_getxtimes;

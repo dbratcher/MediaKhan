@@ -1,9 +1,9 @@
 #include "redis.h"
 
 
-extern int last_id;
-extern redisContext *c;
-extern redisReply *reply;
+int redis_last_id=1;
+redisContext *c;
+redisReply *reply=NULL;
 
 
 bool redis_init() {
@@ -125,20 +125,20 @@ string redis_getkey_cols(string col) {
 string redis_setval(string file_id, string col, string val) {
     
     if(file_id.compare("null")==0) {
-	string out=redis_getval("last_id","val");
+	string out=redis_getval("redis_last_id","val");
 	
         if(out.compare("null")==0) {
 	    out="1";
 	}
 
         string file_id=out;
-	last_id=0;
-	last_id=atoi(out.c_str());
-	last_id++;//find non-local solution (other table?)
+	redis_last_id=0;
+	redis_last_id=atoi(out.c_str());
+	redis_last_id++;//find non-local solution (other table?)
 	ostringstream result;
-	result<<last_id;
-	redis_remove_val("last_id","val",out);
-	redis_setval("last_id","val",result.str());
+	result<<redis_last_id;
+	redis_remove_val("redis_last_id","val",out);
+	redis_setval("redis_last_id","val",result.str());
 	redis_setval(file_id,col,val);
 	return file_id;
     }

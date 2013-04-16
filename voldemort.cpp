@@ -1,11 +1,12 @@
 #include "voldemort.h"
 
-extern int last_id;
-extern list<string> bootstrapUrls;
-extern ClientConfig *gconfig;
-extern SocketStoreClientFactory *gfactory;
-extern auto_ptr<StoreClient> *gclient;
-extern StoreClient *myclient;
+int vold_last_id=1;
+list<string> bootstrapUrls;
+string storeName("test");
+ClientConfig *gconfig;
+SocketStoreClientFactory *gfactory;
+auto_ptr<StoreClient> *gclient;
+StoreClient *myclient;
 
 bool voldemort_init() {
 	//setup voldemort connection
@@ -113,23 +114,23 @@ string voldemort_getval(string file_id, string col){
 string voldemort_setval(string file_id, string col, string val){
 	cout<<"in vold_setval with file_id:"<<file_id<<" col:"<<col<<" val:"<<val<<endl;
 	if(file_id.compare("null")==0){
-		string out=voldemort_getval("last_id","val");
+		string out=voldemort_getval("vold_last_id","val");
 		cout<< "OUT="<<out<<endl;
 		if(out.compare("null")==0){
 			out="0";
 		}
 		cout<< "OUT="<<out<<endl;
 		string file_id=out;
-		last_id=0;
-		last_id=atoi(out.c_str());
-		cout << "OLD LAST ID="<<last_id<<endl;
-		last_id++;//find non-local solution (other table?)
+		vold_last_id=0;
+		vold_last_id=atoi(out.c_str());
+		cout << "OLD LAST ID="<<vold_last_id<<endl;
+		vold_last_id++;//find non-local solution (other table?)
 		ostringstream result;
-		cout << "NEW LAST ID="<<last_id<<endl;
-		result<<last_id;
+		cout << "NEW LAST ID="<<vold_last_id<<endl;
+		result<<vold_last_id;
 		cout << "RESULT="<<result.str()<<endl;
-		voldemort_remove_val("last_id","val",out);
-		voldemort_setval("last_id","val",result.str());
+		voldemort_remove_val("vold_last_id","val",out);
+		voldemort_setval("vold_last_id","val",result.str());
 		voldemort_setval(file_id,col,val);
 		return file_id;
 	}

@@ -4,7 +4,6 @@
 using namespace std;
 using namespace Voldemort;
 
-
 bool voldemort_init();
 string voldemort_getkeys(string col, string val);
 string voldemort_getval(string file_id, string col);

@@ -12,10 +12,6 @@
 #define log stderr
 
 #ifdef APPLE
-  int clock_gettime(int i, struct timespec* b) {
-    return 0;
-  }
-
   char* strdup(const char* str) {
     char* newstr = (char*)malloc(strlen(str)+1);
     strcpy(newstr, str);
@@ -28,6 +24,7 @@ string stats_file="./stats.txt";
 string servers[5];
 int num_servers = 1;
 
+<<<<<<< HEAD
 #define BILLION 1E9
 //timing structures
 struct timespec start, stop;
@@ -327,10 +324,12 @@ char* append_path2(string newp) {
   return strdup((server+"/"+newp).c_str());
 }
 
+=======
+>>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
 static void unmounting(char * mnt_dir) {
   log_msg("in umounting");
       log_msg("In UMOUNT\n");
-            #ifdef MACH_TIME
+            #ifdef APPLE
                 sprintf(command, "umount %s\n",mnt_dir);
             #else
                 sprintf(command,"fusermount -u %s\n",mnt_dir);
@@ -1636,8 +1635,6 @@ static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi)
 
 void *khan_init(struct fuse_conn_info *conn) {
 
-    FUSE_ENABLE_SETVOLNAME(conn);
-    FUSE_ENABLE_XTIMES(conn);
     log_msg("khan_init() called!\n");
     sprintf(msg,"khan_root is : %s\n",servers[0].c_str());log_msg(msg);
     if(chdir(servers[0].c_str())<0) {
@@ -1989,13 +1986,18 @@ int main(int argc, char *argv[])
         xmp_oper.opendir  = khan_opendir;
   xmp_oper.flush    = khan_flush;
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef HAVE_SETXATTR
 =======
 >>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
+=======
+#ifdef APPLE
+>>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
   xmp_oper.setxattr  = xmp_setxattr;
   xmp_oper.getxattr  = xmp_getxattr;
   xmp_oper.listxattr  = xmp_listxattr;
   xmp_oper.removexattr  = xmp_removexattr;
+<<<<<<< HEAD
 <<<<<<< HEAD
 #endif
 
@@ -2007,6 +2009,8 @@ int main(int argc, char *argv[])
     printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
 =======
 #ifdef APPLE
+=======
+>>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
         xmp_oper.setvolname     = xmp_setvolname;
         xmp_oper.exchange       = xmp_exchange;
         xmp_oper.getxtimes      = xmp_getxtimes;

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <string.h>
 #include <sys/stat.h>
 #include <libgen.h>
 #include "config.h"

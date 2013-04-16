@@ -24,308 +24,6 @@ string stats_file="./stats.txt";
 string servers[5];
 int num_servers = 1;
 
-<<<<<<< HEAD
-#define BILLION 1E9
-//timing structures
-struct timespec start, stop;
-double time_spent;
-
-//stats
-int vold_calls=0;
-int readdir_calls=0;
-int access_calls=0;
-int getattr_calls=0;
-int read_calls=0;
-int write_calls=0;
-int create_calls=0;
-int rename_calls=0;
-double tot_time=0;
-double vold_avg_time=0;
-double readdir_avg_time=0;
-double access_avg_time=0;
-double getattr_avg_time=0;
-double read_avg_time=0;
-double write_avg_time=0;
-double create_avg_time=0;
-double rename_avg_time=0;
-int redis_calls=0;
-double redis_avg_time=0;
-
-
-int last_id=1;
-
-//redis setup variables
-#ifdef REDIS_FOUND
-redisContext *c;
-redisReply *reply=NULL;
-#endif
-
-//voldemort connec0tion setup variables (must be global for continued access)
-#ifdef VOLDEMORT_FOUND
-list<string> bootstrapUrls;
-string storeName("test");
-ClientConfig *gconfig;
-SocketStoreClientFactory *gfactory;
-auto_ptr<StoreClient> *gclient;
-StoreClient *myclient;
-#endif
-
-char* append_path2(string);
-
-int get_file_size(string file_name){
-<<<<<<< HEAD
-  cout << "in get file size with name:"<<file_name<<endl;
-  string tempbase = file_name;
-        string base=basename(strdup(tempbase.c_str()));
-  cout << "steal base:"<<base<<endl;
-  string path=append_path2(base);
-  cout << "create path:"<<path<<endl;
-=======
-  string tempbase = file_name;
-        string base=basename(strdup(tempbase.c_str()));
-  string path=append_path2(base);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
-  struct stat st;
-  stat(path.c_str(), &st);
-  return st.st_size;
-}
-
-
-string intersect(string files1, string files2){
-  string ret="";
-  string tok1="";
-  string tok2="";
-  stringstream f1(files1);
-  while(getline(f1,tok1,':')){
-    stringstream f2(files2);
-    while(getline(f2,tok2,':')){
-      if(strcmp(tok1.c_str(),tok2.c_str())==0){
-        ret+=":"+tok1;
-      }
-    }
-  }
-  return ret;
-}
-
-string trim_right(string source, string t = " \n")
-{
-  string str = source;
-  return str.erase( str.find_last_not_of(t) + 1);
-}
-
-string trim_left( string source, string t = " \n")
-{
-  std::string str = source;
-  return str.erase(0 , source.find_first_not_of(t) );
-}
-
-string trim(string source, string t = " \n")
-{
-  string str = source;
-  return trim_left( trim_right( str , t) , t );
-}
-
-int count_string(string tobesplit){
-  int count=0;
-  if(strcmp(tobesplit.c_str(),"null")==0){
-    return 0;
-  } else {
-    stringstream ss(tobesplit.c_str());
-    string token;
-    while(getline(ss, token, ':')){
-      count++;
-    }
-    return count;
-  }
-}
-
-bool init_database(){
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT) {
-    return voldemort_init();
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    return redis_init();
-  }
-  #endif
-}
-
-string database_setval(string file_id, string col, string val){
-  log_msg("in setval");
-  file_id=trim(file_id);
-  col=trim(col);
-  val=trim(val);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring="fail";
-    retstring=voldemort_setval(file_id,col,val);
-    retstring= voldemort_setval(file_id,col,val);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return retstring;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring="fail";
-    retstring=redis_setval(file_id,col,val);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return retstring;
-  }
-  #endif
-}
-
-string database_getval(string col, string val){
-<<<<<<< HEAD
-  log_msg("in getval");
-=======
-  fprintf(stderr, "in getval with %s %s", col.c_str(), val.c_str());
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
-  col=trim(col);
-  val=trim(val);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    log_msg("using vold");
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=voldemort_getval(col,val);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return retstring;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=redis_getval(col,val);
-    cout<<"just got a "<<retstring<<endl;
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return retstring;
-  }
-  #endif
-}
-
-string database_getkeys(string file_id, string col){
-  col=trim(col);
-  file_id=trim(file_id);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=voldemort_getkeys(file_id,col);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return retstring;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=redis_getkeys(file_id,col);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return retstring;
-  }
-  #endif
-}
-
-string database_getvals(string col){
-  col=trim(col);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstr=voldemort_getkey_cols(col);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return retstr;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstr=redis_getkey_cols(col);
-    cout<<"got string "<<retstr<<endl;
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return retstr;
-  }
-  #endif
-}
-
-void database_remove_val(string file, string col, string val){
-  file=trim(file);
-  col=trim(col);
-  val=trim(val);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    voldemort_remove_val(file,col,val);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    redis_remove_val(file,col,val);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return;
-  }
-  return;
-  #endif
-}
-
-
-char* append_path(const char * newp) {
-  sprintf(msg,"in append_path with %s and %s",servers[0].c_str(),newp);
-  log_msg(msg);
-  fpath=(char*)malloc(MAX_PATH_LENGTH);
-      memset(fpath,0,MAX_PATH_LENGTH);
-          sprintf(&fpath[0],"%s%s",servers[0].c_str(),newp);
-  //log_msg("returning");
-            return fpath;
-}
-
-char* append_path2(string newp) {
-  //get file from database
-  cout<<"in append_path2"<<endl;
-  string fid=database_getval("name",newp);
-  cout<<"got fid:"<<fid<<endl;
-  //get server name
-  string server=database_getval(fid,"server");
-  cout<<"got server:"<<server<<endl;
-  //append and return c_str
-  return strdup((server+"/"+newp).c_str());
-}
-
-=======
->>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
 static void unmounting(char * mnt_dir) {
   log_msg("in umounting");
       log_msg("In UMOUNT\n");
@@ -376,20 +74,6 @@ int initializing_khan(char * mnt_dir) {
             fprintf(stderr, "directory opened successfully\n");
         }
 
-<<<<<<< HEAD
-  init_database();
-
-  //check if we've loaded metadata before
-  log_msg("attempt to get setup value");
-  string output=database_getval("setup","value");
-  log_msg("it should be true if setup has occured before");
-  if(output.compare("true")==0){
-    log_msg("it has happened before, stop");
-
-    cout << endl << endl;
-    string vals=database_getvals("artist");
-    cout << "getvals for artist =" << vals << endl << endl;
-=======
   //using voldemort for the moment
   init_database();
 
@@ -397,22 +81,15 @@ int initializing_khan(char * mnt_dir) {
   string output=database_getval("setup","value");
   if(output.compare("true")==0){
           log_msg("Database was previously initialized.");
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
     clock_gettime(CLOCK_REALTIME,&stop);
     tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
     return 0; //setup has happened before, done (eventually check records here)
   }
 
   //if we have not setup, do so now
-<<<<<<< HEAD
   log_msg("it hasnt happened, setvalue then setup");
   database_setval("setup","value","true");
   log_msg("proceeding with setup...");
-=======
-  log_msg("Database has not been initialized.");
-  database_setval("setup","value","true");
-  log_msg("Proceeding with setup.");
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
 
 
   //load metadata
@@ -478,10 +155,7 @@ int initializing_khan(char * mnt_dir) {
                 cout << "=============== attr value =   " << msg <<endl;
                 database_setval(fileid,token,msg);
               }
-<<<<<<< HEAD
-=======
                                                         pclose(stream);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
             }
           }
         }
@@ -526,7 +200,6 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-<<<<<<< HEAD
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
         calc_time_start(&getattr_calls);
@@ -541,25 +214,13 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
     string types=database_getval("allfiles","types");
     cout <<types;
     cout << "+++++++++++++++++++++ here is the count " << count_string(types)<< endl;
-=======
-static int xmp_getattr(const char *path, struct stat *stbuf) {
-  calc_time_start(&getattr_calls);
-  fprintf(log,"In xmp_getattr with path:%s\n",path);
-  memset(stbuf, 0, sizeof(struct stat));
-  if(strcmp(path,"/")==0) {
-    stbuf->st_mode = S_IFDIR | 0755;
-    string types = database_getval("allfiles","types");
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
     stbuf->st_nlink=count_string(types);
     stbuf->st_size=4096;
     calc_time_stop(&getattr_calls, &getattr_avg_time);
     return 0;
   }
-<<<<<<< HEAD
 
-=======
-  int res=0;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
+  res=0;
   string dirs=database_getval("alldirs","paths");
   stringstream dd(dirs);
   string tok;
@@ -567,11 +228,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
     cout<<"comparing "<<tok<<","<<path<<endl;
     if(strcmp(path,tok.c_str())==0){
       cout<<"found!"<<endl;
-<<<<<<< HEAD
-      stbuf->st_mode=S_IFDIR | 0555;
-=======
       stbuf->st_mode=S_IFDIR | 0755;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
       stbuf->st_nlink=0;
       stbuf->st_size=4096;
       calc_time_stop(&getattr_calls, &getattr_avg_time);
@@ -615,11 +272,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
 
 
           if(!aint) {
-<<<<<<< HEAD
             stbuf->st_mode=S_IFDIR | 0555;
-=======
-            stbuf->st_mode=S_IFDIR | 0755;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
             stbuf->st_nlink=count_string(attrs);
             stbuf->st_size=4096;
             calc_time_stop(&getattr_calls, &getattr_avg_time);
@@ -634,14 +287,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
                 //check val (loop this and attr later)
                 if(!vint){
                   cout << "matched an attr path"<<endl;
-<<<<<<< HEAD
-                  stbuf->st_mode=S_IFDIR | 0555;
-                  stbuf->st_nlink=count_string(vals);
-=======
                   stbuf->st_mode=S_IFDIR | 0755;
                   stbuf->st_nlink=count_string(vals);
                   stbuf->st_size=4096;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
                   calc_time_stop(&getattr_calls, &getattr_avg_time);
                   return 0;
                 } else {
@@ -686,15 +334,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
                               if(mint) {
                                 found=1;
                               } else {
-<<<<<<< HEAD
-                                cout <<"genre dir"<<endl;
-                                stbuf->st_mode=S_IFDIR | 0555;
-                                stbuf->st_nlink=count_string(attrs);
-=======
                                 stbuf->st_mode=S_IFDIR | 0755;
                                 stbuf->st_nlink=count_string(attrs);
                                 stbuf->st_size=4096;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
                                 calc_time_stop(&getattr_calls, &getattr_avg_time);
                                 return 0;
                               }
@@ -711,14 +353,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
                           calc_time_stop(&getattr_calls, &getattr_avg_time);
                           return 0;
                         } else {
-<<<<<<< HEAD
-                          stbuf->st_mode=S_IFDIR | 0555;
-                          stbuf->st_nlink=count_string(files);
-=======
                           stbuf->st_mode=S_IFDIR | 0755;
                           stbuf->st_nlink=count_string(files);
                           stbuf->st_size=4096;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
                           calc_time_stop(&getattr_calls, &getattr_avg_time);
                           return 0;
                         }
@@ -728,15 +365,10 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
                 }
               }
             }
-<<<<<<< HEAD
-            //not valid attr
-            if(!found){
-=======
             log_msg("exiting big block");
             //not valid attr
             if(!found){
               log_msg("not found - return -2");
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
               calc_time_stop(&getattr_calls, &getattr_avg_time);
               return -2;
             }
@@ -753,21 +385,11 @@ static int xmp_getattr(const char *path, struct stat *stbuf) {
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
 {
   calc_time_start(&readdir_calls);
-<<<<<<< HEAD
-  sprintf(msg,"in xmp readdir with path %s",path);
-  log_msg(msg);
-  filler(buf, ".", NULL, 0);
-  filler(buf, "..", NULL, 0);
-
-
-  //spit out user added dirs (not attr based)
-=======
   fprintf(log, "in xmp readdir with path %s", path);
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
 
   /* user added dirs (not attr based)
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
   string dirs=database_getval("alldirs","paths");
   string toka="";
   stringstream dd(dirs);
@@ -780,11 +402,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t
     if(strcmp(dpath,path)==0){
       filler(buf, dir, NULL, 0);
     }
-<<<<<<< HEAD
-  }
-=======
   } */
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
 
   //decompose path
   stringstream ss0(path+1);
@@ -1019,28 +637,20 @@ int khan_open(const char *path, struct fuse_file_info *fi)
 
 int xmp_access(const char *path, int mask)
 {
-<<<<<<< HEAD
-  calc_time_start(&access_calls);
-  log_msg("in xmp_access");
-=======
     calc_time_start(&access_calls);
     fprintf(log, "in xmp_access with path: %s\n", path);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
 
     char *path_copy=strdup(path);
-<<<<<<< HEAD
   if(strcmp(path,"/")==0) {
     log_msg("at root");
     calc_time_stop(&access_calls, &access_avg_time);
     return 0;
   }
-=======
 //  if(strcmp(path,"/")==0) {
         log_msg("at root");
         calc_time_stop(&access_calls, &access_avg_time);
         return 0;
 //  }
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
 
   string dirs=database_getval("alldirs","paths");
   string temptok="";
@@ -1292,10 +902,7 @@ static int xmp_unlink(const char *path) {
         if(fgets(msg,200,stream)!=0){
           database_remove_val(fileid,token,msg);
         }
-<<<<<<< HEAD
-=======
                                 pclose(stream);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
       }
     }
 
@@ -1370,10 +977,7 @@ static int xmp_rename(const char *from, const char *to) {
         if(fgets(msg,200,stream)!=0){
           database_remove_val(fileid,token,msg);
         }
-<<<<<<< HEAD
-=======
                                 pclose(stream);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
       }
     }
     //remove from from database
@@ -1451,15 +1055,12 @@ static int xmp_chmod(const char *path, mode_t mode) {
         path=append_path2(basename(strdup(path)));
         sprintf(msg, "In chmod for: %s\n",path);
         log_msg(msg);
-<<<<<<< HEAD
   res = chmod(path, mode);
-=======
 #ifdef APPLE
         res = chmod(path, mode);
 #else
         res = chmod(path, mode);
 #endif
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
   if (res == -1)
     return -errno;
   return 0;
@@ -1554,19 +1155,11 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
     clock_gettime(CLOCK_REALTIME,&stop);
     time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
     write_avg_time=(write_avg_time*(write_calls-1)+time_spent)/write_calls;
-<<<<<<< HEAD
-    return -errno;
-  }
-  res = pwrite(fd, buf, size, offset);
-  if (res == -1)
-    res = -errno;
-=======
     return errno;
   }
   res = pwrite(fd, buf, size, offset);
   if (res == -1)
     res = errno;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
   close(fd);
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
@@ -1575,51 +1168,17 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 }
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf) {
-<<<<<<< HEAD
-  log_msg("in xmp_stratfs");
-
-    path=append_path2(basename(strdup(path)));
-    sprintf(msg,"\nstatfs - %s\n", path);
-    log_msg(msg);
-    int res;
-    res = statvfs(path, stbuf);
-    if (res == -1) {
-    sprintf(msg, "statfs error for %s\n",path);
-    log_msg(msg);
-                return -errno;
-=======
     /* Pass the call through to the underlying system which has the media. */
     fprintf(log, "in xmp_statfs with path %s\n", path);
     int res = statvfs(path, stbuf);
     if (res != 0) {
         fprintf(log, "statfs error for %s\n",path);
         return errno;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
     }
     return 0;
 }
 
 static int xmp_release(const char *path, struct fuse_file_info *fi) {
-<<<<<<< HEAD
-  log_msg("in xmp_release");
-  /* Just a stub.   This method is optional and can safely be left
-     unimplemented */
-        path++;
-  (void) path;
-  (void) fi;
-  return 0;
-}
-
-static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi){
-  log_msg("in xmp_fsync");
-  /* Just a stub.   This method is optional and can safely be left
-     unimplemented */
-        path++;
-  (void) path;
-  (void) isdatasync;
-  (void) fi;
-  return 0;
-=======
     /* Just a stub. This method is optional and can safely be left unimplemented. */
     fprintf(log, "in xmp_release with path %s\n", path);
     return 0;
@@ -1629,7 +1188,6 @@ static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi)
     /* Just a stub. This method is optional and can safely be left unimplemented. */
     fprintf(log, "in xmp_fsync with path %s\n", path);
     return 0;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
 }
 
 
@@ -1670,10 +1228,7 @@ int khan_flush (const char * path, struct fuse_file_info * info ) {
           cout << "=============== attr value =   " << msg <<endl;
           database_setval(fileid,token,msg);
         }
-<<<<<<< HEAD
-=======
                                 pclose(stream);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
       }
     }
   }
@@ -1726,10 +1281,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
           cout << "=============== attr value =   " << msg <<endl;
           database_setval(fileid,token,msg);
         }
-<<<<<<< HEAD
-=======
                                 pclose(stream);
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
       }
     }
   } else {
@@ -1816,42 +1368,6 @@ int khan_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info 
     retstat = fstat(fi->fh, statbuf);
     return retstat;
 }
-<<<<<<< HEAD
-
-#ifdef HAVE_SETXATTR
-/* xattr operations are optional and can safely be left unimplemented */
-static int xmp_setxattr(const char *path, const char *name, const char *value,  size_t size, int flags) {
-        //path;
-  log_msg("in setxattr");
-
-  int res = lsetxattr(path, name, value, size, flags);
-  if (res == -1)
-    return -errno;
-  return 0;
-}
-
-static int xmp_getxattr(const char *path, const char *name, char *value, size_t size) {
-  //path;
-        int res = lgetxattr(path, name, value, size);
-  if (res == -1)
-    return -errno;
-  return res;
-}
-
-static int xmp_listxattr(const char *path, char *list, size_t size) {
-  //path;
-        int res = llistxattr(path, list, size);
-  if (res == -1)
-    return -errno;
-  return res;
-}
-
-static int xmp_removexattr(const char *path, const char *name) {
-  //path;
-        int res = lremovexattr(path, name);
-  if (res == -1)
-    return -errno;
-=======
 #ifdef APPLE
 static int xmp_setxattr(const char *path, const char *name, const char *value,  size_t size, int flags, uint32_t param) {
 #else
@@ -1869,7 +1385,6 @@ static int xmp_listxattr(const char *path, char *list, size_t size) {
 }
 
 static int xmp_removexattr(const char *path, const char *name) {
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
   return 0;
 }
 
@@ -1909,7 +1424,6 @@ static int xmp_chflags(const char* param1, uint32_t param2) {
     log_msg("apple function called\n");
     return 0;
 }
-
 static int xmp_setattr_x(const char* param1, struct setattr_x* param2) {
     log_msg("apple function called\n");
     return 0;
@@ -1921,7 +1435,6 @@ static int xmp_fsetattr_x(const char* param1, struct setattr_x* param2, struct f
 }
 
 #endif
-
 struct khan_param {
         unsigned                major;
         unsigned                minor;
@@ -1958,11 +1471,7 @@ int main(int argc, char *argv[])
 {
   xmp_oper.getattr  = xmp_getattr;
   xmp_oper.init     = khan_init;
-<<<<<<< HEAD
-    xmp_oper.access    = xmp_access;
-=======
   xmp_oper.access    = xmp_access;
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
   xmp_oper.readlink  = xmp_readlink;
   xmp_oper.readdir  = xmp_readdir;
   xmp_oper.mknod    = xmp_mknod;
@@ -1985,20 +1494,11 @@ int main(int argc, char *argv[])
   xmp_oper.fsync    = xmp_fsync;
         xmp_oper.opendir  = khan_opendir;
   xmp_oper.flush    = khan_flush;
-<<<<<<< HEAD
-<<<<<<< HEAD
-#ifdef HAVE_SETXATTR
-=======
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
-=======
 #ifdef APPLE
->>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
   xmp_oper.setxattr  = xmp_setxattr;
   xmp_oper.getxattr  = xmp_getxattr;
   xmp_oper.listxattr  = xmp_listxattr;
   xmp_oper.removexattr  = xmp_removexattr;
-<<<<<<< HEAD
-<<<<<<< HEAD
 #endif
 
 
@@ -2007,10 +1507,7 @@ int main(int argc, char *argv[])
         if((argc<3)||(argc>4))
   {
     printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
-=======
 #ifdef APPLE
-=======
->>>>>>> 58290d0ef81e1863642de24b72d01967fc6d53fb
         xmp_oper.setvolname     = xmp_setvolname;
         xmp_oper.exchange       = xmp_exchange;
         xmp_oper.getxtimes      = xmp_getxtimes;
@@ -2027,7 +1524,6 @@ int main(int argc, char *argv[])
         if((argc<3)||(argc>5))
   {
     printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d] [-s]\nAborting...\n");
->>>>>>> 58dda99d925222f2bc71502764c36fbfe021d23d
     exit(1);
   }
          struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
@@ -2067,4 +1563,5 @@ int main(int argc, char *argv[])
          retval=fuse_main(args.argc,args.argv, &xmp_oper, khan_data);
          log_msg("Done with fuse_main...\n");
    return retval;
+}
 }

@@ -2,13 +2,13 @@
 #include <string.h>
 #include <string>
 #include <stdio.h>
+#include <vector>
 #include "localizations.h"
 
-extern string servers[5];
-extern int num_servers;
+extern vector<string> servers;
 
 string random_location(char* filename) {
-  return servers[rand()%num_servers];	
+  return servers.at(rand()%servers.size());	
 }
 
 string genre_location(char* filename) {

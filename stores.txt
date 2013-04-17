@@ -1,1 +1,2 @@
 /home/drew/projects/mediakhan/khan_root
+/home/drew/projects/mediakhan/khan_root2

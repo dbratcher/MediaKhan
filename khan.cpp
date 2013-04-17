@@ -21,151 +21,137 @@
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
-string servers[5];
-int num_servers = 1;
+vector<string> servers;
 
-static void unmounting(char * mnt_dir) {
-  log_msg("in umounting");
-      log_msg("In UMOUNT\n");
-            #ifdef APPLE
-                sprintf(command, "umount %s\n",mnt_dir);
-            #else
-                sprintf(command,"fusermount -u %s\n",mnt_dir);
-            #endif
-            if (system(command) < 0) {  
-    sprintf(msg,"Could not unmount last mounted directory!\n");
-          log_msg(msg);
-          return;
+
+void process_filetypes(string server) {
+  string line;
+  ifstream filetypes_file((server+"/filetypes.txt").c_str());
+  getline(filetypes_file, line);
+  while(filetypes_file.good()){
+    cout << "=============== got type =   " << line <<endl;
+    //add line to vold as file type
+    database_setval("allfiles","types",line);
+    database_setval(line,"attrs","all_"+line+"s");
+    string asetval=database_setval("all_"+line+"sgen","command","basename");
+    string ext=line;
+    getline(filetypes_file,line);
+    const char *firstchar=line.c_str();
+    while(firstchar[0]=='-'){
+      //add line to vold under filetype as vold
+      stringstream ss(line.c_str());
+      string attr;
+      getline(ss,attr,'-');
+      getline(ss,attr,':');
+      string command;
+      getline(ss,command,':');
+      cout << "============ checking attr = "<<attr<<endl;
+      cout << "============ checking command = "<<command<<endl;
+      attr=trim(attr);
+      database_setval(ext,"attrs",attr);
+      database_setval(attr+"gen","command",command);
+      getline(filetypes_file,line);
+      firstchar=line.c_str();
+    }
+  }
+}
+
+void process_file(string server, string file) {
+  cout << "================== checking file = "<<file<<endl;
+  string ext = strrchr(file.c_str(),'.')+1;
+  string filename=strrchr(file.c_str(),'/')+1;
+  string fileid = database_setval("null","name",filename);
+  database_setval(fileid,"ext",ext);
+  database_setval(fileid,"server",server);
+  cout << "===== file "<< file <<"has ext  =   " << ext <<endl;
+  string attrs=database_getval(ext,"attrs");
+  string token="";
+  stringstream ss2(attrs.c_str());
+  while(getline(ss2,token,':')){
+    if(strcmp(token.c_str(),"null")!=0){
+      cout << "========= looking at attr =   " << token <<endl;
+      string cmd=database_getval(token+"gen","command");
+      string msg2=(cmd+" "+file).c_str();
+      cout << "========= issuing command =   " << msg2 <<endl;
+      FILE* stream=popen(msg2.c_str(),"r");
+      if(fgets(msg,200,stream)!=0){
+        cout << "========= attr value =   " << msg <<endl;
+        database_setval(fileid,token,msg);
       }
-      log_msg("fusermount successful\n");
-}
-
-static void CleanUpKhan(int sig) {
-  log_msg("in cleanupkhan");
-     sprintf(command,"fusermount -u ~/hello/mnt");
-     if (system(command) < 0) {
-    fprintf(stderr,"UNABLE TO UMOUNT FUSE...bailing out");
-     }
-     fprintf(stderr,"Khan umounted successfully.....Thank you!\n");
+      pclose(stream);
+    }
+  }
 }
 
 
+void unmounting(string mnt_dir) {
+  log_msg("in umounting");
+  #ifdef APPLE
+  string command = "umount " + mnt_dir + "\n";
+  #else
+  string command = "fusermount -u " + mnt_dir + "\n";
+  #endif
+  if (system(command.c_str()) < 0) {  
+    sprintf(msg,"Could not unmount mounted directory!\n");
+    log_msg(msg);
+    return;
+  }
+  log_msg("fusermount successful\n");
+}
 
 int initializing_khan(char * mnt_dir) {
-        log_msg("In initialize\n");
+  log_msg("In initialize\n");
   unmounting(mnt_dir);
   clock_gettime(CLOCK_REALTIME,&start);
-  //make sure khan will clean up after itself
-        signal(SIGTERM,CleanUpKhan);
-  signal(SIGKILL,CleanUpKhan);
-
         //Opening root directory and creating if not present
-  cout<<"khan_root[0] is "<<servers[0]<<endl;
-        if(NULL == opendir(servers[0].c_str()))  {
-           sprintf(msg,"Error msg on opening directory : %s\n",strerror(errno));
-             log_msg(msg);
-       log_msg("Root directory might not exist..Creating\n");
-             sprintf(&command[0],"mkdir %s",servers[0].c_str());
-             if (system(command) < 0) {
+  cout<<"khan_root[0] is "<<servers.at(0)<<endl;
+  if(NULL == opendir(servers.at(0).c_str()))  {
+    sprintf(msg,"Error msg on opening directory : %s\n",strerror(errno));
+    log_msg(msg);
+    log_msg("Root directory might not exist..Creating\n");
+    string command = "mkdir " + servers.at(0);
+    if (system(command.c_str()) < 0) {
       log_msg("Unable to create storage directory...Aborting\n");
-         exit(1);
-      }
-    } else {
-            fprintf(stderr, "directory opened successfully\n");
-        }
+      exit(1);
+    }
+  } else {
+    fprintf(stderr, "directory opened successfully\n");
+  }
 
-  //using voldemort for the moment
   init_database();
 
   //check if we've loaded metadata before
   string output=database_getval("setup","value");
   if(output.compare("true")==0){
-          log_msg("Database was previously initialized.");
+    log_msg("Database was previously initialized.");
     clock_gettime(CLOCK_REALTIME,&stop);
     tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
-    return 0; //setup has happened before, done (eventually check records here)
+    return 0; //setup has happened before
   }
 
   //if we have not setup, do so now
   log_msg("it hasnt happened, setvalue then setup");
   database_setval("setup","value","true");
-  log_msg("proceeding with setup...");
 
+  //load metadata associatons
+  for(int i=0; i<servers.size(); i++){
+    process_filetypes(servers.at(i));
+  }
 
-  //load metadata
-  for(int i=0; i<num_servers; i++){
-    string line;
-    ifstream filetypes_file((servers[i]+"/filetypes.txt").c_str());
-    getline(filetypes_file, line);
-    while(filetypes_file.good()){
-      cout << "=============== got type =   " << line <<endl;
-      //add line to vold as file type
-      database_setval("allfiles","types",line);
-      database_setval(line,"attrs","all_"+line+"s");
-      string asetval=database_setval("all_"+line+"sgen","command","basename");
-      string ext=line;
-      getline(filetypes_file,line);
-      const char *firstchar=line.c_str();
-      while(firstchar[0]=='-'){
-        //add line to vold under filetype as vold
-        stringstream ss(line.c_str());
-        string attr;
-        getline(ss,attr,'-');
-        getline(ss,attr,':');
-        string command;
-        getline(ss,command,':');
-        cout << "================== checking attr = "<<attr<<endl;
-        cout << "================== checking command = "<<command<<endl;
-        attr=trim(attr);
-        database_setval(ext,"attrs",attr);
-        database_setval(attr+"gen","command",command);
-        getline(filetypes_file,line);
-        firstchar=line.c_str();
-      }
-    }
-
-    string types=database_getval("allfiles","types"); //get all filetypes from voldemort
-    string ext="";
-    cout << "================= types to look for ="<<types<<endl;
+  //load metadata for each file on each server
+  string types=database_getval("allfiles","types");
+  cout << "================= types to look for ="<<types<<endl;
+  for(int i=0; i<servers.size(); i++) {
     glob_t files;
-    glob((servers[i]+"/*.*").c_str(),0,NULL,&files); /**/
-    stringstream ss(types.c_str());
-    while(getline(ss,ext,':')){//for each type
-      for(int j=0; j<files.gl_pathc; j++) {
-        cout << "================== checking file = "<<files.gl_pathv[j]<<endl;
-        string file=files.gl_pathv[j];
-        if(strcmp(strrchr(file.c_str(),'.')+1, ext.c_str())==0){
-          string filename=strrchr(file.c_str(),'/')+1;
-          string fileid = database_setval("null","name",filename);
-          database_setval(fileid,"ext",ext);
-          database_setval(fileid,"server",servers[i]);
-
-          cout << "=============== file "<< file <<"has ext  =   " << ext <<endl;
-          string attrs=database_getval(ext,"attrs");
-          string token="";
-          stringstream ss2(attrs.c_str());
-          while(getline(ss2,token,':')){
-            if(strcmp(token.c_str(),"null")!=0){
-              cout << "=============== looking at attr =   " << token <<endl;
-              string cmd=database_getval(token+"gen","command");
-              string msg2=(cmd+" "+file).c_str();
-              cout << "=============== issuing command =   " << msg2 <<endl;
-              FILE* stream=popen(msg2.c_str(),"r");
-              if(fgets(msg,200,stream)!=0){
-                cout << "=============== attr value =   " << msg <<endl;
-                database_setval(fileid,token,msg);
-              }
-                                                        pclose(stream);
-            }
-          }
-        }
-      }
+    glob((servers.at(i)+"/*.*").c_str(),0,NULL,&files);
+    for(int j=0; j<files.gl_pathc; j++) {//for each file
+      process_file(servers.at(i), files.gl_pathv[j]);
     }
   }
   clock_gettime(CLOCK_REALTIME,&stop);
   tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
-        log_msg("At the end of initialize\n");
-        return 0;
+  log_msg("At the end of initialize\n");
+  return 0;
 }
 
 
@@ -1194,10 +1180,10 @@ static int xmp_fsync(const char *path, int isdatasync,struct fuse_file_info *fi)
 void *khan_init(struct fuse_conn_info *conn) {
 
     log_msg("khan_init() called!\n");
-    sprintf(msg,"khan_root is : %s\n",servers[0].c_str());log_msg(msg);
-    if(chdir(servers[0].c_str())<0) {
+    sprintf(msg,"khan_root is : %s\n",servers.at(0).c_str());log_msg(msg);
+    if(chdir(servers.at(0).c_str())<0) {
        sprintf(msg,"could not change directory ,errno %s\n",strerror(errno)); log_msg(msg);
-       perror(servers[0].c_str());
+       perror(servers.at(0).c_str());
     }
     sprintf(msg,"AT THE END OF INIT\n"); log_msg(msg);
     return KHAN_DATA;
@@ -1265,7 +1251,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   if(strcmp(dtype.c_str(),"null")!=0){
     //get all attrs, set in database
     database_setval(fileid,"ext",mytype);
-    database_setval(fileid,"server",servers[0]);
+    database_setval(fileid,"server",servers.at(0));
 
     string attrs=database_getval(mytype,"attrs");
     string token="";
@@ -1274,7 +1260,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       if(strcmp(token.c_str(),"null")!=0){
         cout << "=============== looking at attr =   " << token <<endl;
         string cmd=database_getval(token+"gen","command");
-        string msg2=(cmd+" "+servers[0]+"/"+basename(strdup(path))).c_str();
+        string msg2=(cmd+" "+servers.at(0)+"/"+basename(strdup(path))).c_str();
         cout << "=============== issuing command =   " << msg2 <<endl;
         FILE* stream=popen(msg2.c_str(),"r");
         if(fgets(msg,200,stream)!=0){
@@ -1528,13 +1514,11 @@ int main(int argc, char *argv[])
       fuse_opt_add_arg(&args, argv[j]);
   }
      
-  fprintf(stderr, "store filename: %s\n\n\n\n", store_filename);
+  fprintf(stderr, "store filename: %s\n", store_filename);
   FILE* stores = fopen(store_filename, "r");
-  int i=0;
   char buffer[100];
   while(fscanf(stores, "%s\n", buffer)!=EOF) {
-    servers[i] = buffer;
-    i++;
+    servers.push_back(buffer);
   }
   fclose(stores);
   umask(0);

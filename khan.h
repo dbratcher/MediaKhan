@@ -29,6 +29,7 @@
 #include <vector>
 #include "log.h"
 #include "utils.h"
+#include "localizations.h"
 #include "database.h"
 
 

@@ -1485,83 +1485,74 @@ int main(int argc, char *argv[])
   xmp_oper.chown    = xmp_chown;
   xmp_oper.truncate  = xmp_truncate;
   xmp_oper.create   = khan_create;
-   xmp_oper.utimens  = xmp_utimens;
+  xmp_oper.utimens  = xmp_utimens;
   xmp_oper.open    = khan_open;
   xmp_oper.read    = xmp_read;
   xmp_oper.write    = xmp_write;
   xmp_oper.statfs    = xmp_statfs;
   xmp_oper.release  = xmp_release;
   xmp_oper.fsync    = xmp_fsync;
-        xmp_oper.opendir  = khan_opendir;
+  xmp_oper.opendir  = khan_opendir;
   xmp_oper.flush    = khan_flush;
 #ifdef APPLE
   xmp_oper.setxattr  = xmp_setxattr;
   xmp_oper.getxattr  = xmp_getxattr;
   xmp_oper.listxattr  = xmp_listxattr;
   xmp_oper.removexattr  = xmp_removexattr;
+  xmp_oper.setvolname     = xmp_setvolname;
+  xmp_oper.exchange       = xmp_exchange;
+  xmp_oper.getxtimes      = xmp_getxtimes;
+  xmp_oper.setbkuptime    = xmp_setbkuptime;
+  xmp_oper.setchgtime     = xmp_setchgtime;
+  xmp_oper.setcrtime      = xmp_setcrtime;
+  xmp_oper.chflags        = xmp_chflags;
+  xmp_oper.setattr_x      = xmp_setattr_x;
+  xmp_oper.fsetattr_x     = xmp_fsetattr_x;
 #endif
 
 
   int retval=0;
-        struct khan_param param = { 0, 0, NULL, 0 };
-        if((argc<3)||(argc>4))
-  {
+  struct khan_param param = { 0, 0, NULL, 0 };
+  if((argc<3)||(argc>4)) {
     printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
-#ifdef APPLE
-        xmp_oper.setvolname     = xmp_setvolname;
-        xmp_oper.exchange       = xmp_exchange;
-        xmp_oper.getxtimes      = xmp_getxtimes;
-        xmp_oper.setbkuptime    = xmp_setbkuptime;
-        xmp_oper.setchgtime     = xmp_setchgtime;
-        xmp_oper.setcrtime      = xmp_setcrtime;
-        xmp_oper.chflags        = xmp_chflags;
-        xmp_oper.setattr_x      = xmp_setattr_x;
-        xmp_oper.fsetattr_x     = xmp_fsetattr_x;
-#endif
-
-  int retval=0;
-        struct khan_param param = { 0, 0, NULL, 0 };
-        if((argc<3)||(argc>5))
-  {
-    printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d] [-s]\nAborting...\n");
     exit(1);
   }
-         struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
-         int j;
-         char* store_filename=NULL;
-         for(j = 0; j < argc; j++) {
-             if (j == 2)
-                     store_filename = argv[j];
-             else
-                     fuse_opt_add_arg(&args, argv[j]);
-         }
+
+  struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
+  int j;
+  char* store_filename=NULL;
+  for(j = 0; j < argc; j++) {
+    if (j == 2)
+      store_filename = argv[j];
+    else
+      fuse_opt_add_arg(&args, argv[j]);
+  }
      
-         fprintf(stderr, "%s\n\n\n\n", store_filename);
-         FILE* stores = fopen(store_filename, "r");
-         int i=0;
-         char buffer[100];
-         while(fscanf(stores, "%s\n", buffer)!=EOF) {
-            servers[i] = buffer;
-            i++;
-         }
-         fclose(stores);
-         umask(0);
-         if(-1==log_open()) {
-          printf("Unable to open the log file..NO log would be recorded..!\n");
-   }
-   log_msg("\n\n--------------------------------------------------------\n");
-         khan_data = (khan_state*)calloc(sizeof(struct khan_state), 1);
-   if (khan_data == NULL)  {
+  fprintf(stderr, "store filename: %s\n\n\n\n", store_filename);
+  FILE* stores = fopen(store_filename, "r");
+  int i=0;
+  char buffer[100];
+  while(fscanf(stores, "%s\n", buffer)!=EOF) {
+    servers[i] = buffer;
+    i++;
+  }
+  fclose(stores);
+  umask(0);
+  if(-1==log_open()) {
+    printf("Unable to open the log file..NO log would be recorded..!\n");
+  }
+  log_msg("\n\n--------------------------------------------------------\n");
+  khan_data = (khan_state*)calloc(sizeof(struct khan_state), 1);
+  if (khan_data == NULL)  {
     log_msg("Could not allocate memory to khan_data!..Aborting..!\n");
-          abort();
-   }
-         if(initializing_khan(argv[1])<0)  {
-          log_msg("Could not initialize khan..Aborting..!\n");
-            return -1;
-   }
-   log_msg("initialized....");
-         retval=fuse_main(args.argc,args.argv, &xmp_oper, khan_data);
-         log_msg("Done with fuse_main...\n");
-   return retval;
-}
+    abort();
+  }
+  if(initializing_khan(argv[1])<0)  {
+    log_msg("Could not initialize khan..Aborting..!\n");
+    return -1;
+  }
+  log_msg("initialized....");
+  retval=fuse_main(args.argc,args.argv, &xmp_oper, khan_data);
+  log_msg("Done with fuse_main...\n");
+  return retval;
 }

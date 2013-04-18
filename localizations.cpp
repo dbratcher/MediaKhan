@@ -9,10 +9,10 @@
 
 extern vector<string> servers;
 
-vector<string> get_all_files() {
+vector<string> get_all_files(string ext) {
   cout << " GET ALL FILES " << endl;
   vector<string> files;
-  string mp3s = database_getvals("all_mp3s");
+  string mp3s = database_getvals("all_"+ext+"s");
   stringstream ss(mp3s);
   string filename;
   while(getline(ss, filename, ':')) {
@@ -36,7 +36,7 @@ string genre_location(string fileid) {
   cout << "looking for "<<genre<<endl;
   vector<int> server_counts(servers.size());
   //for each file
-  vector<string> files = get_all_files();
+  vector<string> files = get_all_files("mp3");
   for(int i=0; i<files.size(); i++) {
     //if genre = file genre
     if(fileid.compare(files.at(i))) {
@@ -101,7 +101,8 @@ string knn_location(string fileid) {
   float min_dist = 1000000;
   string min_file = fileid;
   //for each file
-  vector<string> files = get_all_files();
+  string ext = database_getval(fileid, "ext");
+  vector<string> files = get_all_files(ext);
   for(int i=0; i<files.size(); i++) {
     if(files.at(i).compare(fileid)!=0) {
       vector<string> attrs = get_all_attr_vals(fileid);

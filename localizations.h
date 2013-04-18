@@ -1,2 +1,2 @@
 using namespace std;
-string get_location(char* filename);
+string get_location(string fileid);

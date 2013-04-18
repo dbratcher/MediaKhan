@@ -56,14 +56,10 @@ void process_filetypes(string server) {
   }
 }
 
-void process_file(string server, string file) {
-  cout << "================== checking file = "<<file<<endl;
-  string ext = strrchr(file.c_str(),'.')+1;
-  string filename=strrchr(file.c_str(),'/')+1;
-  string fileid = database_setval("null","name",filename);
-  database_setval(fileid,"ext",ext);
-  database_setval(fileid,"server",server);
-  cout << "===== file "<< file <<"has ext  =   " << ext <<endl;
+void process_file(string server, string fileid) {
+  string file = database_getval(fileid, "name");
+  string ext = database_getval(fileid, "ext");
+  file = server + "/" + file;
   string attrs=database_getval(ext,"attrs");
   string token="";
   stringstream ss2(attrs.c_str());
@@ -145,7 +141,13 @@ int initializing_khan(char * mnt_dir) {
     glob_t files;
     glob((servers.at(i)+"/*.*").c_str(),0,NULL,&files);
     for(int j=0; j<files.gl_pathc; j++) {//for each file
-      process_file(servers.at(i), files.gl_pathv[j]);
+      string file = files.gl_pathv[j];
+      string ext = strrchr(file.c_str(),'.')+1;
+      string filename=strrchr(file.c_str(),'/')+1;
+      string fileid = database_setval("null","name",filename);
+      database_setval(fileid,"ext",ext);
+      database_setval(fileid,"server",servers.at(i));
+      process_file(servers.at(i), fileid);
     }
   }
   clock_gettime(CLOCK_REALTIME,&stop);
@@ -934,8 +936,6 @@ static int xmp_rename(const char *from, const char *to) {
         sprintf(msg, "0000000000000000000000000000000000000000000000000000000000000000000000000\n-----------------------------In rename from %s to %s\n",from, to);
         log_msg(msg);
 
-  //check from is valid & from fuse (otherwise create and copy)
-
   //get from fileid
   cout <<basename(strdup(from)) << " is the filename "<<endl;
   string fileid=database_getval("name",basename(strdup(from)));
@@ -1192,31 +1192,23 @@ void *khan_init(struct fuse_conn_info *conn) {
 
 
 int khan_flush (const char * path, struct fuse_file_info * info ) {
-  cout << "======================IN KHAN FLUSH!!!!!!!!!!!!!!!!!!!!!" << endl << endl;
-  string fileid=database_getval("name",basename(strdup(path)));
+  cout << "=============IN KHAN FLUSH!!!!!!!!" << endl << endl;
+  string filename = basename(strdup(path));
+  string fileid=database_getval("name",filename);
   string server=database_getval(fileid,"server");
-  string spath=path;
-  string mytype=spath.substr(1,spath.find("/",1)-1);
-      string dtype=database_getval(mytype,"attrs");
-  if(strcmp(dtype.c_str(),"null")!=0){
-    //get all attrs, set in database
-    string attrs=database_getval(mytype,"attrs");
-    string token="";
-    stringstream ss2(attrs.c_str());
-    while(getline(ss2,token,':')){
-      if(strcmp(token.c_str(),"null")!=0){
-        cout << "=============== looking at attr =   " << token <<endl;
-        string cmd=database_getval(token+"gen","command");
-        string msg2=(cmd+" "+server+"/"+basename(strdup(path))).c_str();
-        cout << "=============== issuing command =   " << msg2 <<endl;
-        FILE* stream=popen(msg2.c_str(),"r");
-        if(fgets(msg,200,stream)!=0){
-          cout << "=============== attr value =   " << msg <<endl;
-          database_setval(fileid,token,msg);
-        }
-                                pclose(stream);
-      }
-    }
+  process_file(server, fileid);
+
+  //check location
+  string location = get_location(fileid);
+  cout << "============ LOCATION: " << location << endl << endl;
+  //if not current
+  if(location.compare(server)!=0) {
+    //  copy to new location
+    cout << " MUST MOVE From "<<server<<" TO "<<location<<endl;
+    database_setval(fileid,"server",location);
+    string from = server + "/" + filename;
+    string to = location + "/" + filename;
+    rename(from.c_str(), to.c_str());
   }
   return 0;
 }
@@ -1232,8 +1224,6 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   int retstat = 0;
   int fd=0;
 
-
-  //check from is valid & from fuse (otherwise error for now...)
   string fileid=database_getval("name",basename(strdup(path)));
 
   //if file name is in system dont create, just update metadata
@@ -1245,14 +1235,14 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     cout << "creating internal file(manipulating attrs):"<<fileid<<endl;
   }
 
+
   string spath=path;
   string mytype=spath.substr(1,spath.find("/",1)-1);
-      string dtype=database_getval(mytype,"attrs");
+  string dtype=database_getval(mytype,"attrs");
+  database_setval(fileid,"ext",mytype);
   if(strcmp(dtype.c_str(),"null")!=0){
     //get all attrs, set in database
-    database_setval(fileid,"ext",mytype);
     database_setval(fileid,"server",servers.at(0));
-
     string attrs=database_getval(mytype,"attrs");
     string token="";
     stringstream ss2(attrs.c_str());
@@ -1267,7 +1257,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
           cout << "=============== attr value =   " << msg <<endl;
           database_setval(fileid,token,msg);
         }
-                                pclose(stream);
+        pclose(stream);
       }
     }
   } else {
@@ -1316,31 +1306,14 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     }
   }
 
+  //open file handle to create on file system
+  path=append_path2(basename(strdup(path)));
+  fd = open(path,fi->flags, mode);
+  close(fd);
 
-    path=append_path2(basename(strdup(path)));
-    //TODO:  Message to drift, create a file with the metadata as given.
-    sprintf(msg,"KHAN_CREATE >> PATH = %s, mode=0%03o)\n",path, mode);
- //   log_msg(msg);
-   // mknod(path,mode,NULL);
-    fd = open(path,fi->flags, mode);
-    //log_msg("The problem is not with the file open");
-    //if (fd < 0)  {
-     //  sprintf(msg,"khan_create creat error & fd: %d",fd);
-    //   log_msg(msg);
-   // }
-    //fi->fh=fd;
-    //log_msg("The problem is not with the file handle");
-   // struct stat * stbuf;
-   // if(lstat(path,stbuf)<0)  {
-//      log_msg("The problem is not with lstat1");
-     //     return -errno;
-    //}
-    //log_msg("The problem is not with lstat2");
-  //  return retstat;
-close(fd);
+
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-  printf("1111111111111111111111111111111111\ntime spent :%g",time_spent);
   create_avg_time=(create_avg_time*(create_calls-1)+time_spent)/create_calls;
   return 0;
 }

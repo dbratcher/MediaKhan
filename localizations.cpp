@@ -2,6 +2,7 @@
 #include <string.h>
 #include <string>
 #include <stdio.h>
+#include <math.h>
 #include <vector>
 #include "database.h"
 #include "localizations.h"
@@ -66,13 +67,76 @@ string genre_location(string fileid) {
   return max;
 }
 
+vector<string> get_all_attr_vals(string attr) {
+  vector<string> vals;
+  string mp3s = database_getvals(attr);
+  stringstream ss(mp3s);
+  string val;
+  while(getline(ss, val, ':')) {
+    if(val.compare("")!=0) {
+      vals.push_back(val);
+    }
+  }
+  return vals;
+}
+
+
+int get_attr_numeric_val(string attr, string val) {
+  //get all attr vals
+  vector<string> vals = get_all_attr_vals(attr);
+  //sort
+  sort(vals.begin(), vals.end());
+  //return index of val
+  int index = 0;
+  for(int i =0; i<vals.size(); i++) {
+    if(vals.at(i).compare(val)==0) {
+      index = i;
+    }
+  }
+  return index;
+}
+
 string knn_location(string fileid) {
-  //run knn
-  //place on best fit server
+  //keep track of min distance file
+  float min_dist = 1000000;
+  string min_file = fileid;
+  //for each file
+  vector<string> files = get_all_files();
+  for(int i=0; i<files.size(); i++) {
+    if(files.at(i).compare(fileid)!=0) {
+      vector<string> attrs = get_all_attr_vals(fileid);
+      int sum = 0;
+      //for each file attr
+      for(int j =0; j<attrs.size(); j++) {
+        // get files attr numeric vals
+        string val = database_getval(files.at(i), attrs.at(j));
+        int fv = get_attr_numeric_val(attrs.at(j), val);
+        val = database_getval(fileid, attrs.at(j));
+        int iv = get_attr_numeric_val(attrs.at(j), val);
+        //subtract
+        int diff = fv - iv;
+        //sqr then add to sum
+        sum += pow(diff, 2);
+      }
+      //sqrt sum = distance
+      float dist = sqrt(sum);
+      //keep track of min dist file
+      if(dist < min_dist) {
+        min_dist = dist;
+        min_file = files.at(i);
+      }
+    }
+  }
+  
+  cout << "KNN SELECTED A LOCATION "<<endl;
+  cout << min_file << endl;
+  //get closest file server
+  string min_file_server = database_getval(min_file, "server");
+  return min_file_server;
 }
 
 string get_location(string fileid) {
-  string type = "genre";
+  string type = "knn";
   if(type.compare("random")==0) {
     return random_location(fileid);
   } else if(type.compare("genre")==0) {

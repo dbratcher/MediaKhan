@@ -211,43 +211,37 @@ string redis_setval(string file_id, string col, string val) {
 
 
 void redis_remove_val(string fileid, string col, string val){
-    string replaced=redis_getval(fileid,col);
+  string replaced=redis_getval(fileid,col);
     
-    if(replaced.find(val)!=string::npos) {
-        //remove from file entry
-        replaced.replace(replaced.find(val),val.length()+1,"");
-        
-        if(replaced.length()>0 && replaced.at(0)==':') {
-            replaced="~"+col+replaced;
-        } else {
-            replaced="~"+col+":"+replaced;
-        }
+  if(replaced.find(val)!=string::npos) {
+      //remove from file entry
+      reply = (redisReply *)redisCommand(c,("get "+fileid).c_str());
+      string srep = reply->str;
+      int len=srep.find("~"+col+":");
+      int len2 = srep.find(val, len+1);
+      srep.replace(len2, val.length()+1, "");
+      int len1 = srep.find("~",len+1);
+      len2 = srep.find(":",len+1);
+      if(len2>len1) {
+        srep.replace(len, len1-len, "");
+      }
+      reply = (redisReply *)redisCommand(c,"set %s %s", fileid.c_str(), srep.c_str());
 
-        if((replaced.length()-1)>0) {
-            cout<<replaced.length()<<endl;
-            
-            if(replaced.at(replaced.length() - 1) == ':') {
-                replaced.erase(replaced.length() - 1);
-            }
-        }
+      //remove from col entry
+      reply = (redisReply *)redisCommand(c,("get "+col).c_str());
+      string sout=reply->str;
+      len=sout.find("~"+val+":");
+      len2=sout.find("~",len+1);
         
-        reply = (redisReply *)redisCommand(c,"set %s %s",     fileid.c_str(),replaced.c_str());
- 
-        //remove from col entry
-        reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-        string sout=reply->str;
-        int len=sout.find("~"+val+":");
-        int len2=sout.find("~",len+1);
-        
-        if(len2>0) {
-            sout.replace(len,len2-len,"");
-        } else if(len>0) {
-            sout.replace(len,sout.length(),"");
-        } else {
-            sout="";
-        }
+      if(len2>0) {
+          sout.replace(len,len2-len,"");
+      } else if(len>0) {
+          sout.replace(len,sout.length(),"");
+      } else {
+          sout="";
+      }
 
-        reply = (redisReply *)redisCommand(c,"set %s %s",     col.c_str(),sout.c_str());
+      reply = (redisReply *)redisCommand(c,"set %s %s", col.c_str(),sout.c_str());
     }
 }
 

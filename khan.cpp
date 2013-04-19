@@ -22,7 +22,8 @@
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
 vector<string> servers;
-
+vector<string> server_ids;
+string this_server;
 
 void process_filetypes(string server) {
   string line;
@@ -147,6 +148,9 @@ int initializing_khan(char * mnt_dir) {
       string fileid = database_setval("null","name",filename);
       database_setval(fileid,"ext",ext);
       database_setval(fileid,"server",servers.at(i));
+      for(int k=0; k<server_ids.size(); k++) {
+        database_setval(fileid, server_ids.at(k), "0");
+      }
       process_file(servers.at(i), fileid);
     }
   }
@@ -610,16 +614,25 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t
 int khan_open(const char *path, struct fuse_file_info *fi)
 {
   log_msg("in khan_open");
+  //update usage count
+  string filename = basename(strdup(path));
+  string fileid = database_getval("name",filename);
+  string val = database_getval(fileid, this_server);
+  int value = atoi(val.c_str())+1;
+  ostringstream new_val;
+  new_val << value;
+  cout << "new val:" << new_val.str() <<endl;
+  database_setval(fileid, this_server, new_val.str()); 
+  database_remove_val(fileid, this_server, val);
+  int retstat = 0;
+  int fd;
+  path=append_path2(basename(strdup(path)));
 
-    int retstat = 0;
-    int fd;
-    path=append_path2(basename(strdup(path)));
-
-    sprintf(msg,"In khan_open path : %s\n",path);
-    log_msg(msg);
-    fd = open(path, fi->flags);
-    fi->fh = fd;
-    return 0;
+  sprintf(msg,"In khan_open path : %s\n",path);
+  log_msg(msg);
+  fd = open(path, fi->flags);
+  fi->fh = fd;
+  return 0;
 }
 
 
@@ -777,6 +790,30 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev) {
 static int xmp_mkdir(const char *path, mode_t mode) {
 
   string strpath=path;
+  if(strpath.find("localize")!=string::npos) {
+    if(strpath.find("usage")!=string::npos) {
+      usage_localize();
+    } else {
+      cout << "LOCALIZING" << endl;
+      cout << strpath << endl;
+      //check location
+      string filename = "winter.mp3";
+      string fileid = database_getval("name", filename);
+      string location = get_location(fileid);
+      string server = database_getval(fileid, "server");
+      cout << "======== LOCATION: " << location << endl << endl;
+      //if not current
+      if(location.compare(server)!=0) {
+        //  copy to new location
+        cout << " MUST MOVE "<<server<<" TO "<<location<<endl;
+        database_setval(fileid,"server",location);
+        string from = server + "/" + filename;
+        string to = location + "/" + filename;
+        rename(from.c_str(), to.c_str());
+      }
+    }
+    return -1;
+  }
   if(strpath.find("stats")!=string::npos){
     //print stats and reset
     ofstream stfile;
@@ -1198,18 +1235,6 @@ int khan_flush (const char * path, struct fuse_file_info * info ) {
   string server=database_getval(fileid,"server");
   process_file(server, fileid);
 
-  //check location
-  string location = get_location(fileid);
-  cout << "============ LOCATION: " << location << endl << endl;
-  //if not current
-  if(location.compare(server)!=0) {
-    //  copy to new location
-    cout << " MUST MOVE From "<<server<<" TO "<<location<<endl;
-    database_setval(fileid,"server",location);
-    string from = server + "/" + filename;
-    string to = location + "/" + filename;
-    rename(from.c_str(), to.c_str());
-  }
   return 0;
 }
 
@@ -1490,8 +1515,12 @@ int main(int argc, char *argv[])
   fprintf(stderr, "store filename: %s\n", store_filename);
   FILE* stores = fopen(store_filename, "r");
   char buffer[100];
-  while(fscanf(stores, "%s\n", buffer)!=EOF) {
+  char buffer2[100];
+  fscanf(stores, "%s\n", buffer);
+  this_server = buffer;
+  while(fscanf(stores, "%s %s\n", buffer, buffer2)!=EOF) {
     servers.push_back(buffer);
+    server_ids.push_back(buffer2);
   }
   fclose(stores);
   umask(0);

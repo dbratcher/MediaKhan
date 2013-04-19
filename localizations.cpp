@@ -8,6 +8,7 @@
 #include "localizations.h"
 
 extern vector<string> servers;
+extern vector<string> server_ids;
 
 vector<string> get_all_files(string ext) {
   cout << " GET ALL FILES " << endl;
@@ -137,7 +138,7 @@ string knn_location(string fileid) {
 }
 
 string get_location(string fileid) {
-  string type = "knn";
+  string type = "random";
   if(type.compare("random")==0) {
     return random_location(fileid);
   } else if(type.compare("genre")==0) {
@@ -149,4 +150,30 @@ string get_location(string fileid) {
     exit(1);
   }
   return NULL;
+}
+
+void usage_localize() {
+  //for all files
+  vector<string> files = get_all_files("mp3");
+  for(int i=0; i<files.size(); i++) {
+    //for each server
+    int max_usage=0;
+    int max_server;
+    for(int j=0; j<server_ids.size(); j++) { 
+      //track max usage count server
+      string res=database_getval(files.at(i), server_ids.at(j));
+      int usage = atoi(res.c_str());
+      if(usage>max_usage) {
+        max_usage = usage;
+        max_server = j;
+      }
+    }
+    //move to server
+    string filename = database_getval(files.at(i), "name");
+    string current = database_getval(files.at(i), "server");
+    string cur_path = current + "/" + filename;
+    string dst_path = servers.at(max_server) + "/" + filename;
+    rename(cur_path.c_str(), dst_path.c_str());
+    database_setval(files.at(i), "server", dst_path);
+  }
 }

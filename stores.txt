@@ -1,2 +1,4 @@
-/home/drew/projects/mediakhan/khan_root
-/home/drew/projects/mediakhan/khan_root2
+laptop
+/home/drew/projects/mediakhan/khan_root laptop
+/home/drew/projects/mediakhan/khan_root2 desktop
+/home/drew/projects/mediakhan/khan_root3 pi

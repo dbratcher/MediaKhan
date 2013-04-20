@@ -40,7 +40,6 @@ bool init_database(){
 
 
 string database_setval(string file_id, string col, string val){
-  log_msg("in setval");
   file_id=trim(file_id);
   col=trim(col);
   val=trim(val);

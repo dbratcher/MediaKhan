@@ -20,6 +20,9 @@ config.h
 
 # Logs
 logFile
+media
+remote1
+remote2
 *.swp
 *~
 

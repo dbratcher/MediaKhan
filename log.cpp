@@ -11,7 +11,7 @@ FILE *fileDescriptor = NULL;
 const char *logLocation = "./logFile";
 
 int log_open() {
-    fileDescriptor = fopen(logLocation, "w");
+    fileDescriptor = fopen(logLocation, "a+");
     
     if(fileDescriptor == NULL) {
         printf("Cannot open log file.\n");
@@ -23,7 +23,6 @@ int log_open() {
 }
 
 void log_msg(const char *msg) {
-    fprintf(stderr, "%s\n", msg);
     fprintf(fileDescriptor, "%s\n",msg);
     fflush(fileDescriptor);
 }

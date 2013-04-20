@@ -138,7 +138,7 @@ string knn_location(string fileid) {
 }
 
 string get_location(string fileid) {
-  string type = "random";
+  string type = "knn";
   if(type.compare("random")==0) {
     return random_location(fileid);
   } else if(type.compare("genre")==0) {

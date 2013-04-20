@@ -790,15 +790,16 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev) {
 static int xmp_mkdir(const char *path, mode_t mode) {
   struct timespec mkdir_start, mkdir_stop;
   string strpath=path;
+  log_msg(("in mkdir with path "+strpath).c_str());
   if(strpath.find("localize")!=string::npos) {
     clock_gettime(CLOCK_REALTIME,&mkdir_start);
     if(strpath.find("usage")!=string::npos) {
       usage_localize();
     } else {
-      cout << "LOCALIZING" << endl;
-      cout << strpath << endl;
       //check location
-      string filename = "winter.mp3";
+      string filename = strpath.substr(strpath.find("localize")+9);
+      cout << "LOCALIZING" << endl;
+      cout << filename << endl;
       string fileid = database_getval("name", filename);
       string location = get_location(fileid);
       string server = database_getval(fileid, "server");
@@ -818,7 +819,9 @@ static int xmp_mkdir(const char *path, mode_t mode) {
     }
     clock_gettime(CLOCK_REALTIME,&mkdir_stop);
     localize_time = (mkdir_stop.tv_sec-mkdir_start.tv_sec)+(mkdir_stop.tv_nsec-mkdir_start.tv_nsec)/BILLION; 
-    cout << "LOCALIZATION TIME:" << localize_time << endl <<endl;
+    ostringstream out;
+    out << "LOCALIZATION TIME:" << localize_time;
+    log_msg(out.str().c_str());
     return -1;
   }
   if(strpath.find("stats")!=string::npos){

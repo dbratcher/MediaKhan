@@ -788,9 +788,10 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev) {
 
 
 static int xmp_mkdir(const char *path, mode_t mode) {
-
+  struct timespec mkdir_start, mkdir_stop;
   string strpath=path;
   if(strpath.find("localize")!=string::npos) {
+    clock_gettime(CLOCK_REALTIME,&mkdir_start);
     if(strpath.find("usage")!=string::npos) {
       usage_localize();
     } else {
@@ -804,14 +805,20 @@ static int xmp_mkdir(const char *path, mode_t mode) {
       cout << "======== LOCATION: " << location << endl << endl;
       //if not current
       if(location.compare(server)!=0) {
-        //  copy to new location
+        //  move to new location
         cout << " MUST MOVE "<<server<<" TO "<<location<<endl;
         database_setval(fileid,"server",location);
         string from = server + "/" + filename;
         string to = location + "/" + filename;
-        rename(from.c_str(), to.c_str());
+        string command = "mv " + from + " " + to;
+        FILE* stream=popen(command.c_str(),"r");
+        pclose(stream);
+        //rename(from.c_str(), to.c_str());
       }
     }
+    clock_gettime(CLOCK_REALTIME,&mkdir_stop);
+    localize_time = (mkdir_stop.tv_sec-mkdir_start.tv_sec)+(mkdir_stop.tv_nsec-mkdir_start.tv_nsec)/BILLION; 
+    cout << "LOCALIZATION TIME:" << localize_time << endl <<endl;
     return -1;
   }
   if(strpath.find("stats")!=string::npos){

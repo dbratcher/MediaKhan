@@ -21,6 +21,7 @@ double read_avg_time=0;
 double write_avg_time=0;
 double create_avg_time=0;
 double rename_avg_time=0;
+double localize_time=0;
 int redis_calls=0;
 double redis_avg_time=0;
 

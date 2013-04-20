@@ -158,12 +158,16 @@ void usage_localize() {
   for(int i=0; i<files.size(); i++) {
     //for each server
     int max_usage=0;
-    int max_server;
-    for(int j=0; j<server_ids.size(); j++) { 
+    int max_server=0;
+    cout << "looking at file " << i << endl;
+    for(int j=0; j<server_ids.size(); j++) {
+      cout << "looking at server " << j << endl; 
       //track max usage count server
       string res=database_getval(files.at(i), server_ids.at(j));
       int usage = atoi(res.c_str());
+      cout << "this server usage " << usage << endl;
       if(usage>max_usage) {
+        cout << "new max " << usage << endl;
         max_usage = usage;
         max_server = j;
       }
@@ -173,7 +177,14 @@ void usage_localize() {
     string current = database_getval(files.at(i), "server");
     string cur_path = current + "/" + filename;
     string dst_path = servers.at(max_server) + "/" + filename;
-    rename(cur_path.c_str(), dst_path.c_str());
-    database_setval(files.at(i), "server", dst_path);
+    if(cur_path.compare(dst_path)) {
+      cout << "moving to server " << max_server << endl;
+      string command="mv " + cur_path + " " + dst_path;
+      FILE* stream=popen(command.c_str(),"r");
+      pclose(stream);
+      //rename(cur_path.c_str(), dst_path.c_str());
+      database_setval(files.at(i), "server", dst_path);
+    }
   }
+  cout << "done usage localize " << endl;
 }

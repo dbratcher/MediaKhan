@@ -1,1 +1,1 @@
-/home/drew/projects/mediakhan/khan_root
+/Users/drewbratcher/projects/MediaKhan/khan_root

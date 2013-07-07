@@ -40,8 +40,8 @@ A distributed fuse-based media filesystem.
     - update paths in stores.txt to point to media
     - cmake .
     - make
-- Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install
-- Install mpg321 (use to play songs) - use sudo apt-get install
+- Install mp3info (use to generate metadata -see filetypes.txt) - use sudo apt-get install on linux or sudo port install on mac (requires macports)
+- Install mpg321 (use to play songs) - use sudo apt-get install on linux or sudo port install on mac (requires macports)
 
 ### 2. Client Configuration
 

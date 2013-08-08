@@ -21,6 +21,7 @@ double read_avg_time=0;
 double write_avg_time=0;
 double create_avg_time=0;
 double rename_avg_time=0;
+double localize_time=0;
 int redis_calls=0;
 double redis_avg_time=0;
 
@@ -72,7 +73,7 @@ string database_setval(string file_id, string col, string val){
 
 
 string database_getval(string col, string val){
-  fprintf(stderr, "in getval with %s %s", col.c_str(), val.c_str());
+  //fprintf(stderr, "in getval with %s %s", col.c_str(), val.c_str());
   col=trim(col);
   val=trim(val);
   #ifdef VOLDEMORT_FOUND
@@ -92,7 +93,7 @@ string database_getval(string col, string val){
     redis_calls++;
     clock_gettime(CLOCK_REALTIME,&start);
     string retstring=redis_getval(col,val);
-    cout<<"just got a "<<retstring<<endl;
+    //cout<<"just got a "<<retstring<<endl;
     clock_gettime(CLOCK_REALTIME,&stop);
     time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
     redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;

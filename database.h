@@ -46,6 +46,7 @@ extern double read_avg_time;
 extern double write_avg_time;
 extern double create_avg_time;
 extern double rename_avg_time;
+extern double localize_time;
 extern int redis_calls;
 extern double redis_avg_time;
 

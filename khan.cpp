@@ -11,13 +11,6 @@
 
 #define log stderr
 
-#ifdef APPLE
-  char* strdup(const char* str) {
-    char* newstr = (char*)malloc(strlen(str)+1);
-    strcpy(newstr, str);
-    return newstr;
-  }
-#endif
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
@@ -497,7 +490,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t
                                   filler(buf,token.c_str(),NULL,0);
                                 }
                               }
-                              calc_time_stop(&readdir_calls, &readdir_avg_time);                
+                              calc_time_stop(&readdir_calls, &readdir_avg_time);
                               return 0;
                             }
                           }
@@ -977,8 +970,8 @@ static int xmp_rename(const char *from, const char *to) {
   calc_time_start(&rename_calls);
   log_msg("in xmp_rename");
   int res;
-        sprintf(msg, "0000000000000000000000000000000000000000000000000000000000000000000000000\n-----------------------------In rename from %s to %s\n",from, to);
-        log_msg(msg);
+  sprintf(msg, "00000\nIn rename from %s to %s\n",from, to);
+  log_msg(msg);
 
   //get from fileid
   cout <<basename(strdup(from)) << " is the filename "<<endl;
@@ -1505,18 +1498,19 @@ int main(int argc, char *argv[])
   int retval=0;
   struct khan_param param = { 0, 0, NULL, 0 };
   if((argc<3)||(argc>4)) {
-    printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
+    printf("Usage: ./khan <mount_dir_location> [stores.txt] [-d]\nAborting...\n");
     exit(1);
   }
 
   struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
   int j;
-  char* store_filename=NULL;
+  const char* store_filename="stores.txt";
   for(j = 0; j < argc; j++) {
-    if (j == 2)
+    if ((j == 2) && (argv[j][0] != '-')) {
       store_filename = argv[j];
-    else
+    } else {
       fuse_opt_add_arg(&args, argv[j]);
+    }
   }
      
   fprintf(stderr, "store filename: %s\n", store_filename);

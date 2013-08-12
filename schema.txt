@@ -1,0 +1,26 @@
+jpg
+{"name","type","location"}
+name_gen
+{"mp3":"basename"}
+mp3
+{"name","type","location","artist","genre"}
+genre
+{"trance","pop"}
+trance
+{"filehash1","filehash2"}
+genre_gen
+"mp3info -p \"%g\""
+file_hash1
+{"genre":"trance,pop","name":"this","type":"mp3"}
+
+
+
+
+dir struct
+
+type
+name
+artist
+genre
+location
+customtag

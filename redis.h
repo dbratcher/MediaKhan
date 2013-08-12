@@ -1,17 +1,27 @@
-#include <stdlib.h>
-#include <iostream>
-#include <sstream>
+#ifndef REDIS_H
+#define REDIS_H
+
 #include <string>
+#include <vector>
+#include <iostream>
 #include <hiredis/hiredis.h>
-#include "log.h"
 
-using namespace std;
+#include "database.h"
 
-bool redis_init();
-string redis_getval(string file_id, string col);
-string redis_getkeys(string col, string val);
-string redis_getkey_values(string col);
-string redis_getkey_cols(string col);
-string redis_setval(string file_id, string col, string val);
-void redis_remove_val(string fileid, string col, string val);
 
+class Redis: public Database {
+  redisContext* context;
+  redisReply* reply;
+  int last_id;
+  public:
+    void init();
+    vector<string> get(string key);
+    void set(string key, string value);
+    int get_id();
+    void remove(string key, string value);
+    void hset(string hash, string key, string value);
+    vector<string> hget(string hash, string key);
+    string type(string key);
+};
+
+#endif

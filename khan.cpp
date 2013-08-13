@@ -1504,19 +1504,20 @@ int main(int argc, char *argv[])
 
   int retval=0;
   struct khan_param param = { 0, 0, NULL, 0 };
-  if((argc<3)||(argc>4)) {
-    printf("Usage: ./khan <mount_dir_location> <stores.txt> [-d]\nAborting...\n");
+  if((argc<2)||(argc>4)) {
+    printf("Usage: ./khan <mount_dir_location> [stores.txt] [-d]\nAborting...\n");
     exit(1);
   }
 
   struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
   int j;
-  char* store_filename=NULL;
+  const char* store_filename="stores.txt";
   for(j = 0; j < argc; j++) {
-    if (j == 2)
+    if((j == 2) && (argv[j][0]!='-')) {
       store_filename = argv[j];
-    else
+    } else {
       fuse_opt_add_arg(&args, argv[j]);
+    }
   }
      
   fprintf(stderr, "store filename: %s\n", store_filename);

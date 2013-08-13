@@ -7,15 +7,15 @@ redisReply *reply=NULL;
 
 
 bool redis_init() {
-    struct timeval timeout = { 3600, 0};
-    c=redisConnectWithTimeout((char*)"127.0.0.1",6379, timeout);
+  struct timeval timeout = { 3600, 0};
+  c=redisConnectWithTimeout((char*)"127.0.0.1",6379, timeout);
     
-    if(c->err) {
-        fprintf(stderr, "Connection error: %s\n", c->errstr);
-        return 0;
-    }
+  if(c->err) {
+    fprintf(stderr, "Connection error: %s\n", c->errstr);
+    return 0;
+  }
     
-    return 1;
+  return 1;
 }
 
 
@@ -27,7 +27,6 @@ string redis_getval(string file_id, string col) {
     }
 
     string output=reply->str;
-    cout <<output <<"\n";
     size_t exact=output.find("~"+col+":");
     string another="null";
 

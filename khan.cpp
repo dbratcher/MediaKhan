@@ -192,42 +192,19 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-static int xmp_getattr(const char *path, struct stat *stbuf)
-{
-        calc_time_start(&getattr_calls);
+static int khan_getattr(const char *path, struct stat *stbuf) {
+  calc_time_start(&getattr_calls);
   int res=0;
-
-        sprintf(msg,"In xmp_getattr for path:%s\n",path);
-  log_msg(msg);
 
   if(0 == strcmp(path,"/")) {
     log_msg("looking at root");
     stbuf->st_mode=S_IFDIR | 0555;
     string types=database_getval("allfiles","types");
-    cout <<types;
-    cout << "+++++++++++++++++++++ here is the count " << count_string(types)<< endl;
-    stbuf->st_nlink=count_string(types);
+    stbuf->st_nlink=count_string(types)+2;
     stbuf->st_size=4096;
     calc_time_stop(&getattr_calls, &getattr_avg_time);
     return 0;
   }
-
-  res=0;
-  string dirs=database_getval("alldirs","paths");
-  stringstream dd(dirs);
-  string tok;
-  while(getline(dd,tok,':')){
-    cout<<"comparing "<<tok<<","<<path<<endl;
-    if(strcmp(path,tok.c_str())==0){
-      cout<<"found!"<<endl;
-      stbuf->st_mode=S_IFDIR | 0755;
-      stbuf->st_nlink=0;
-      stbuf->st_size=4096;
-      calc_time_stop(&getattr_calls, &getattr_avg_time);
-      return 0;
-    }
-  }
-
 
   //decompose path
   stringstream ss0(path+1);
@@ -288,7 +265,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
                   cout << "more to look at "<<endl;
                   stringstream ss3(vals.c_str());
                   while(getline(ss3, token, ':')){
-                    cout << "comparing "<<token<<" and "<<val<<endl;
+                    cout << "2comparing "<<token<<" and "<<val<<endl;
                     if(strcmp(token.c_str(),val.c_str())==0){
                       if(strcmp(files.c_str(),"")!=0) {
                         cout << "files =" << files;
@@ -305,7 +282,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
                         stringstream ss4(files);
                         while(getline(ss4,token,':')){
                           token=database_getval(token,"name");
-                          cout <<"comparing "<<token<<" and " << file<<endl;
+                          cout <<"3comparing "<<token<<" and " << file<<endl;
                           if(strcmp(token.c_str(),file.c_str())==0){
                             if(mint){
                               cout << "more left but good so far" <<endl;
@@ -884,7 +861,7 @@ static int xmp_mkdir(const char *path, mode_t mode) {
   sprintf(msg,"khan_mkdir for path=%s\n",path);
   log_msg(msg);
   struct stat *st;
-  if(xmp_getattr(path, st)<0) {
+  if(khan_getattr(path, st)<0) {
     //add path
     database_setval("alldirs","paths",path);
     //and break into attr/val pair and add to vold
@@ -1057,7 +1034,7 @@ static int xmp_rename(const char *from, const char *to) {
   string sto=to;
   string tok;
   while(getline(dd,tok,':')){
-    cout<<"comparing sto:"<<sto<<" to tok:"<<tok<<endl;
+    cout<<"4comparing sto:"<<sto<<" to tok:"<<tok<<endl;
     if(sto.find(tok)!=string::npos){
       database_remove_val("alldirs","paths",tok);
     }
@@ -1332,7 +1309,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   string sto=path;
   string tok;
   while(getline(dd,tok,':')){
-    cout<<"comparing sto:"<<sto<<" to tok:"<<tok<<endl;
+    cout<<"5comparing sto:"<<sto<<" to tok:"<<tok<<endl;
     if(sto.find(tok)!=string::npos){
       database_remove_val("alldirs","paths",tok);
     }
@@ -1367,7 +1344,7 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
   return 0;
 }
 
-static int xmp_getxattr(const char *path, const char *name, char *value, size_t size, uint32_t param) {
+static int xmp_getxattr(const char *path, const char *name, char *value, size_t size) {
   return 0;
 }
 
@@ -1460,7 +1437,7 @@ static struct fuse_operations khan_ops;
 
 int main(int argc, char *argv[])
 {
-  khan_ops.getattr  = xmp_getattr;
+  khan_ops.getattr  = khan_getattr;
   khan_ops.init     = khan_init;
   khan_ops.access    = xmp_access;
   khan_ops.readlink  = xmp_readlink;
@@ -1485,9 +1462,9 @@ int main(int argc, char *argv[])
   khan_ops.fsync    = xmp_fsync;
   khan_ops.opendir  = khan_opendir;
   khan_ops.flush    = khan_flush;
+  khan_ops.getxattr  = xmp_getxattr;
 #ifdef APPLE
   khan_ops.setxattr  = xmp_setxattr;
-  khan_ops.getxattr  = xmp_getxattr;
   khan_ops.listxattr  = xmp_listxattr;
   khan_ops.removexattr  = xmp_removexattr;
   khan_ops.setvolname     = xmp_setvolname;

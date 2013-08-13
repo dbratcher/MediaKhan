@@ -24,6 +24,7 @@ string stats_file="./stats.txt";
 vector<string> servers;
 vector<string> server_ids;
 string this_server;
+string this_server_id;
 
 void process_filetypes(string server) {
   string line;
@@ -161,23 +162,11 @@ int initializing_khan(char * mnt_dir) {
 }
 
 
-/** Checks if open operation permitted on the directory passed to it.  */
-int khan_opendir(const char *path, struct fuse_file_info *fi)
-{
-  sprintf(msg,"in khan_opendir with path %s",path);
-  log_msg(msg);
-  if(strcmp(path,"/")==0){
-    log_msg("opening root");
-  }
-    DIR *dp;
-    int retstat = 0;
-          path=append_path(path);
-          sprintf(msg,"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\nmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\nKHAN_OPENDIR >> Opening path=%s\n",path); 
-    log_msg(msg);
-          dp = opendir(path);
-          fi->fh = (intptr_t) dp;
-    log_msg("BEFORE THE END OF OPENDIR\n");
-          return retstat;
+int khan_opendir(const char *c_path, struct fuse_file_info *fi) {
+  string path = this_server + c_path;
+  DIR* dp = opendir(path.c_str());
+  fi->fh = (intptr_t) dp;
+  return 0;
 }
 
 void calc_time_start(int *calls) {
@@ -355,240 +344,42 @@ static int khan_getattr(const char *path, struct stat *stbuf) {
   return -2;
 }
 
+vector<string> split(string str, string delim) {
+  int start=0, end;
+  vector<string> vec;
+  while((end = str.find(delim, start)) != string::npos) {
+    if(end-start>delim.length()) {
+      vec.push_back(str.substr(start, end-start));
+    }
+    start = end+delim.length();
+  }
+  if(end-start>delim.length()) {
+    vec.push_back(str.substr(start));
+  }
+  return vec;
+}
 
-static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
-{
+static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
   calc_time_start(&readdir_calls);
-  fprintf(log, "in xmp readdir with path %s", path);
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
+  
+  stringstream path(c_path+1);
+  string attr, val, file, more;
+  void* aint=getline(path, attr, '/');
+  void* vint=getline(path, val, '/');
+  void* mint=getline(path, more, '/');
 
-  /* user added dirs (not attr based)
-  string dirs=database_getval("alldirs","paths");
-  string toka="";
-  stringstream dd(dirs);
-  while(getline(dd,toka,':')){
-    //only if right path
-    char* dpath=strdup(toka.c_str());
-    dpath=dirname(dpath);
-    char* dir=strdup(toka.c_str());
-    dir=basename(dir);
-    if(strcmp(dpath,path)==0){
-      filler(buf, dir, NULL, 0);
-    }
-  } */
-
-  //decompose path
-  stringstream ss0(path+1);
-  string type, attr, val, file, more;
-  void* tint=getline(ss0, type, '/');
-  void* fint=getline(ss0, file, '/');
-  void* mint=getline(ss0, more, '/');
-  int reta=0;
-  int intersecton=0;
-
-  //check for filetype
-  string types = database_getval("allfiles","types");
-  stringstream ss2(types.c_str());
-  string token;
-  string fillers="";
-  string fillfiles="";
-  string fillfiles2="";
-
-  if(tint){
-    while(getline(ss2,token,':')){
-      if(strcmp(type.c_str(),token.c_str())==0){
-        int found=0;
-        do{
-          found=0;
-          void *aint=fint;
-          string attr=file;
-          void *vint=mint;
-          string val=more;
-          fint=getline(ss0, file, '/');
-          mint=getline(ss0, more, '/');
-
-          //get attr and val
-          string attrs= database_getval(type,"attrs");
-          stringstream ss3(attrs.c_str());
-          if(aint) {
-            while(getline(ss3,token,':')){
-              if(strcmp(attr.c_str(), token.c_str())==0){
-                //check for val
-                string vals=database_getvals(attr);
-                cout << "===GOT " << attr << " and " << vals << endl;
-                stringstream ss4(vals.c_str());
-                if(vint) {
-                  while(getline(ss4,token,':')){
-                    if(strcmp(val.c_str(), token.c_str())==0){
-                      //check for file
-                      string files=database_getval(attr, val);
-                      cout << "GOT " << attr << " and " << val << " and " << files << endl;
-                      stringstream ss5(files.c_str());
-                      if(fint) {
-                        cout << "fint there"<<endl;
-                        while(getline(ss5,token,':')){
-                          if(strcmp(file.c_str(), token.c_str())==0){
-                            cout <<  "matched a file"<<endl;
-                            if(mint){
-                              cout<<"more to path..."<<endl;
-                              //print files, and look for more
-                              while(getline(ss5,token,':')){
-                                string name=database_getval(token,"name");
-                                if(fillers.find(name)==string::npos){
-                                  cout<<fillers<<endl;
-                                  if(intersecton){
-                                    cout << "on" <<endl;
-                                    if(fillfiles.find(name)!=string::npos){
-                                      fillfiles2+=":"+name;
-                                    }
-                                  } else {
-                                    cout << "off" <<endl;
-                                    if(fillfiles.find(name)==string::npos){
-                                      fillfiles+=":"+name;
-                                    }
-                                  }
-                                  fillers+=name;
-                                }
-                              }
-                              if(intersecton){
-                                cout << fillfiles<<endl;
-                                cout << fillfiles2<<endl;
-                                fillfiles=fillfiles2;
-                                fillfiles2="";
-                              }
-                              cout << fillfiles<<endl;
-                              cout << fillfiles2<<endl;
-                              intersecton=1;
-                              found=1;
-                            } else {
-                              //not a dir...
-                            }
-                          }
-                        }
-                        if(!mint){
-                          cout<<"mint not there"<<endl;
-                          stringstream ss6(attrs.c_str());
-                          while(getline(ss6,token,':')){
-                            if(strcmp(file.c_str(), token.c_str())==0){
-                              cout<<"genre dir"<<endl;
-                              vals=database_getvals(token);
-                              stringstream ss7(vals.c_str());
-                              while(getline(ss7,token,':')){
-                                if(strcmp(token.c_str(),"")!=0){
-                                  filler(buf,token.c_str(),NULL,0);
-                                }
-                              }
-                              calc_time_stop(&readdir_calls, &readdir_avg_time);                
-                              return 0;
-                            }
-                          }
-                        } else {
-                          cout<<"mint there"<<endl;
-                          stringstream ss6(files.c_str());
-                          while(getline(ss6,token,':')){
-                            string name=database_getval(token,"name");
-                            if(fillers.find(name)==string::npos){
-                              if(intersecton){
-                                if(fillfiles.find(name)!=string::npos){
-                                  fillfiles2+=":"+name;
-                                }
-                              } else {
-                                if(fillfiles.find(name)==string::npos){
-                                  fillfiles+=":"+name;
-                                }
-                              }
-                              fillers+=name;
-                            }
-                          }
-                          if(intersecton){
-                            fillfiles=fillfiles2;
-                            fillfiles2="";
-                          }
-                          intersecton=1;
-                          found=1;
-                        }
-                      } else {
-                        cout<<"fint not there"<<endl;
-                        //print files
-                        while(getline(ss5,token,':')){
-                          string name=database_getval(token,"name");
-                          if(intersecton){
-                            cout<<"ion"<<endl;
-                            if(fillfiles.find(name)!=string::npos){
-                              fillfiles2+=":"+name;
-                            }
-                          } else {
-                            cout<<"ioff"<<endl;
-                            if(fillfiles.find(name)==string::npos){
-                              fillfiles+=":"+name;
-                            }
-                          }
-                        }
-                        if(intersecton){
-                          cout << fillfiles<<endl;
-                          cout << fillfiles2<<endl;
-                          fillfiles=fillfiles2;
-                          fillfiles2="";
-                        }
-                        cout << fillfiles<<endl;
-                        cout << fillfiles2<<endl;
-
-                        intersecton=1;
-                        stringstream ss6(attrs.c_str());
-                        while(getline(ss6,token,':')){
-                          if(strcmp(token.c_str(),"")!=0){
-                          if(strcmp(token.c_str(),("all_"+type+"s").c_str())!=0){
-                            filler(buf,token.c_str(),NULL,0);
-                          }}
-                        }
-                        if(fillfiles.find(":")!=string::npos){
-                          cout<<"printing "<<fillfiles<<endl;
-                          stringstream ss8(fillfiles);
-                          string tok;
-                          while(getline(ss8, tok, ':')){
-                            if(strcmp(tok.c_str(),"")!=0){
-                              cout << "filling ="<<tok<<endl;
-                              filler(buf,tok.c_str(),NULL,0);
-                            }
-                          }
-                        }
-                        calc_time_stop(&readdir_calls, &readdir_avg_time);
-                        return 0;
-                      }
-                    }
-                  }
-                } else {
-                  //print vals
-                  cout << "about to print vals..."<< endl;
-                  while(getline(ss4,token,':')){
-                    if(strcmp(token.c_str(),"")!=0){
-                      cout << " adding token - " << token << endl;
-                      filler(buf,token.c_str(),NULL,0);
-                    }
-                  }
-                  calc_time_stop(&readdir_calls, &readdir_avg_time);
-                  return 0;
-                }
-              }
-            }
-          } else {
-            //print attrs
-            while(getline(ss3,token,':')){
-              filler(buf,token.c_str(), NULL, 0);
-            }
-            calc_time_stop(&readdir_calls, &readdir_avg_time);
-            return 0;
-          }
-        } while(found);
-      }
-    }
+  if(aint) {
+    cout << "some path, not implemented" << endl;
   } else {
-    //print types
-    while(getline(ss2,token,':')){
-      filler(buf,token.c_str(),NULL,0);
+    // at root, return all attrs
+    vector<string> attrs = split(database_getvals("attrs"),":");
+    for(int i=0; i<attrs.size(); i++) {
+      filler(buf, attrs[i].c_str(), NULL, 0);
     }
   }
+
   calc_time_stop(&readdir_calls, &readdir_avg_time);
   return 0;
 }
@@ -599,13 +390,13 @@ int khan_open(const char *path, struct fuse_file_info *fi)
   //update usage count
   string filename = basename(strdup(path));
   string fileid = database_getval("name",filename);
-  string val = database_getval(fileid, this_server);
+  string val = database_getval(fileid, this_server_id);
   int value = atoi(val.c_str())+1;
   ostringstream new_val;
   new_val << value;
   cout << "new val:" << new_val.str() <<endl;
-  database_setval(fileid, this_server, new_val.str()); 
-  database_remove_val(fileid, this_server, val);
+  database_setval(fileid, this_server_id, new_val.str()); 
+  database_remove_val(fileid, this_server_id, val);
   int retstat = 0;
   int fd;
   path=append_path2(basename(strdup(path)));
@@ -1507,10 +1298,13 @@ int main(int argc, char *argv[])
   char buffer[100];
   char buffer2[100];
   fscanf(stores, "%s\n", buffer);
-  this_server = buffer;
+  this_server_id = buffer;
   while(fscanf(stores, "%s %s\n", buffer, buffer2)!=EOF) {
     servers.push_back(buffer);
     server_ids.push_back(buffer2);
+    if(this_server_id == buffer2) {
+      this_server = buffer;
+    }
   }
   fclose(stores);
   umask(0);

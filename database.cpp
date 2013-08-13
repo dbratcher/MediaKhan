@@ -148,7 +148,6 @@ string database_getvals(string col){
     redis_calls++;
     clock_gettime(CLOCK_REALTIME,&start);
     string retstr=redis_getkey_cols(col);
-    cout<<"got string "<<retstr<<endl;
     clock_gettime(CLOCK_REALTIME,&stop);
     time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
     redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;

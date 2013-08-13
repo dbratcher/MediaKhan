@@ -37,7 +37,7 @@ void process_filetypes(string server) {
     database_setval(line,"attrs","name");
     database_setval("namegen","command","basename");
     database_setval(line,"attrs","type");
-    database_setval("namegen","command","ext.pl");
+    database_setval("typegen","command","ext.pl");
     string ext=line;
     getline(filetypes_file,line);
     const char *firstchar=line.c_str();
@@ -198,20 +198,23 @@ vector<string> split(string str, string delim) {
   return vec;
 }
 
+void dir_pop_stbuf(struct stat* stbuf, string contents) {
+  time_t current_time;
+  time(&current_time);
+  stbuf->st_mode=S_IFDIR | 0555;
+  stbuf->st_nlink=count_string(contents)+1;
+  stbuf->st_size=4096;
+  stbuf->st_mtime=current_time;
+}
+
 
 static int khan_getattr(const char *c_path, struct stat *stbuf) {
   calc_time_start(&getattr_calls);
-  int res=0;
-  time_t current_time;
-  time(&current_time);
  
   if(0 == strcmp(c_path,"/")) {
     log_msg("looking at root");
-    stbuf->st_mode=S_IFDIR | 0555;
-    string types=database_getval("allfiles","types");
-    stbuf->st_nlink=count_string(types)+2;
-    stbuf->st_size=4096;
-    stbuf->st_ctime=current_time;
+    string types=database_getvals("attrs");
+    dir_pop_stbuf(stbuf, types);
     calc_time_stop(&getattr_calls, &getattr_avg_time);
     return 0;
   }
@@ -222,19 +225,32 @@ static int khan_getattr(const char *c_path, struct stat *stbuf) {
   void* vint=getline(path, val, '/');
   void* mint=getline(path, more, '/');
 
-  if(vint) {
-    cout << "some path, not implemented" << endl;
-  } else {
-    vector<string> attrs = split(database_getvals("attrs"),":");
+  if(aint) {
+    string content = database_getvals("attrs");
+    vector<string> attrs = split(content,":");
     for(int i=0; i<attrs.size(); i++) {
       if(attrs[i] == attr) {
-        //matched an attr dir
-        string vals = database_getvals(attr);
-        stbuf->st_mode=S_IFDIR | 0555;
-        stbuf->st_nlink = count_string(vals)+2;
-        stbuf->st_size = 4096;
-        stbuf->st_ctime=current_time;
-        return 0;
+        content = database_getvals(attr);
+        if(vint) {
+          vector<string> vals = split(content,":");
+          for(int j=0; j<vals.size(); j++) {
+            if(vals[i] == val) {
+              content = database_getval(attr, val);
+              if(mint) {
+                cout << "long path, not supported" << endl;
+              } else {
+                dir_pop_stbuf(stbuf, content);
+                calc_time_stop(&getattr_calls, &getattr_avg_time);
+                return 0;
+                
+              }
+            }
+          }  
+        } else { 
+          dir_pop_stbuf(stbuf, content);
+          calc_time_stop(&getattr_calls, &getattr_avg_time);
+          return 0;
+        }
       }
     }
   }

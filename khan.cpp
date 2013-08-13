@@ -34,8 +34,10 @@ void process_filetypes(string server) {
     cout << "=============== got type =   " << line <<endl;
     //add line to vold as file type
     database_setval("allfiles","types",line);
-    database_setval(line,"attrs","all_"+line+"s");
-    string asetval=database_setval("all_"+line+"sgen","command","basename");
+    database_setval(line,"attrs","name");
+    database_setval("namegen","command","basename");
+    database_setval(line,"attrs","type");
+    database_setval("namegen","command","ext.pl");
     string ext=line;
     getline(filetypes_file,line);
     const char *firstchar=line.c_str();
@@ -181,13 +183,13 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-static int khan_getattr(const char *path, struct stat *stbuf) {
+static int khan_getattr(const char *c_path, struct stat *stbuf) {
   calc_time_start(&getattr_calls);
   int res=0;
   time_t current_time;
   time(&current_time);
  
-  if(0 == strcmp(path,"/")) {
+  if(0 == strcmp(c_path,"/")) {
     log_msg("looking at root");
     stbuf->st_mode=S_IFDIR | 0555;
     string types=database_getval("allfiles","types");
@@ -200,146 +202,21 @@ static int khan_getattr(const char *path, struct stat *stbuf) {
     return 0;
   }
 
-  //decompose path
-  stringstream ss0(path+1);
-  string type, attr, val, file, more;
-  void *tint=getline(ss0, type, '/');
-  void *fint=getline(ss0,file, '/');
-  void *mint=getline(ss0,more, '/');
-
-  //check type
-  if(tint) {
-    string types=database_getval("allfiles","types");
-    stringstream ss(types.c_str());
-    string token;
-    string files="";
-    int here=0;
-    while(getline(ss,token,':')){
-      if(strcmp(token.c_str(),type.c_str())==0){
-        string attrs=database_getval(type,"attrs");
-        //check attr
-        int cont=1;
-        int found=0;
-        do {
-          //get attr and val from more
-          found=0;
-          void *aint=fint;
-          string attr=file;
-          void *vint=mint;
-          string val=more;
-          fint=getline(ss0, file, '/');
-          mint=getline(ss0, more, '/');
-          //if(mint){ cout << "got more"<<endl;}
-          //if(fint){ cout << "got file"<<endl;}
-          cout << "looking at attr="<<attr<<" val="<<val<<" file="<<file<<" more="<<more<<endl;
-
-
-          if(!aint) {
-            stbuf->st_mode=S_IFDIR | 0555;
-            stbuf->st_nlink=count_string(attrs);
-            stbuf->st_size=4096;
-            calc_time_stop(&getattr_calls, &getattr_avg_time);
-            return 0;
-          } else {
-            stringstream ss2(attrs.c_str());
-            while(getline(ss2,token,':')){
-              cout << "COMPARING  =" << token << "= TO =" << attr<<"="<< endl;
-              if(strcmp(token.c_str(),attr.c_str())==0){
-                string  vals=database_getvals(attr);
-                cout << "vals="<<vals << " current attr="<<token<<" val="<<val<<endl;
-                //check val (loop this and attr later)
-                if(!vint){
-                  cout << "matched an attr path"<<endl;
-                  stbuf->st_mode=S_IFDIR | 0755;
-                  stbuf->st_nlink=count_string(vals);
-                  stbuf->st_size=4096;
-                  calc_time_stop(&getattr_calls, &getattr_avg_time);
-                  return 0;
-                } else {
-                  cout << "more to look at "<<endl;
-                  stringstream ss3(vals.c_str());
-                  while(getline(ss3, token, ':')){
-                    cout << "2comparing "<<token<<" and "<<val<<endl;
-                    if(strcmp(token.c_str(),val.c_str())==0){
-                      if(strcmp(files.c_str(),"")!=0) {
-                        cout << "files =" << files;
-                        cout << "new = " << database_getval(attr,val);
-                        cout <<"intersect=" << intersect(files,database_getval(attr,val));
-                        files=intersect(database_getval(attr, val),files);
-                      } else {
-                        files=database_getval(attr,val);
-                      }
-
-                      //check file
-                      if(fint) {
-                        cout<< "more to go"<<endl;
-                        stringstream ss4(files);
-                        while(getline(ss4,token,':')){
-                          token=database_getval(token,"name");
-                          cout <<"3comparing "<<token<<" and " << file<<endl;
-                          if(strcmp(token.c_str(),file.c_str())==0){
-                            if(mint){
-                              cout << "more left but good so far" <<endl;
-                              found=1;
-                            } else {
-                              stbuf->st_mode=S_IFREG | 0666;
-                              stbuf->st_nlink=1;
-                              stbuf->st_size=get_file_size(file);
-                              calc_time_stop(&getattr_calls, &getattr_avg_time);
-                              return 0;
-                            }
-                          }
-                        }
-                        stringstream ss5(attrs.c_str());
-                        if(found==0){
-                          while(getline(ss5,token,':')){
-                            if(strcmp(token.c_str(),file.c_str())==0){
-                              if(mint) {
-                                found=1;
-                              } else {
-                                stbuf->st_mode=S_IFDIR | 0755;
-                                stbuf->st_nlink=count_string(attrs);
-                                stbuf->st_size=4096;
-                                calc_time_stop(&getattr_calls, &getattr_avg_time);
-                                return 0;
-                              }
-                            }
-                          }
-                        }
-                      } else {
-                        cout << "at a  val dir="<<attr<<" or "<<type <<endl;
-                        if(strcmp(attr.c_str(),("all_"+type+"s").c_str())==0){
-                          cout<<"IN ALL_TYPE folder with val:"<<val<<endl<<endl;
-                          stbuf->st_mode=S_IFREG | 0666;
-                          stbuf->st_nlink=1;
-                          stbuf->st_size=get_file_size(val);
-                          calc_time_stop(&getattr_calls, &getattr_avg_time);
-                          return 0;
-                        } else {
-                          stbuf->st_mode=S_IFDIR | 0755;
-                          stbuf->st_nlink=count_string(files);
-                          stbuf->st_size=4096;
-                          calc_time_stop(&getattr_calls, &getattr_avg_time);
-                          return 0;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            log_msg("exiting big block");
-            //not valid attr
-            if(!found){
-              log_msg("not found - return -2");
-              calc_time_stop(&getattr_calls, &getattr_avg_time);
-              return -2;
-            }
-          }
-        }while(found);
-      }
+  stringstream path(c_path+1);
+  string attr, val, file, more;
+  void* aint=getline(path, attr, '/');
+  void* vint=getline(path, val, '/');
+  void* mint=getline(path, more, '/');
+/*
+  if(aint) {
+    cout << "some path, not implemented" << endl;
+  } else {
+    vector<string> attrs = split(database_getvals("attrs"),":");
+    for(int i=0; i<attrs.size(); i++) {
     }
   }
+*/
+
   calc_time_stop(&getattr_calls, &getattr_avg_time);
   return -2;
 }

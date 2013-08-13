@@ -195,13 +195,18 @@ void calc_time_stop(int *calls, double *avg) {
 static int khan_getattr(const char *path, struct stat *stbuf) {
   calc_time_start(&getattr_calls);
   int res=0;
-
+  time_t current_time;
+  time(&current_time);
+ 
   if(0 == strcmp(path,"/")) {
     log_msg("looking at root");
     stbuf->st_mode=S_IFDIR | 0555;
     string types=database_getval("allfiles","types");
     stbuf->st_nlink=count_string(types)+2;
     stbuf->st_size=4096;
+    stbuf->st_atime=current_time;
+    stbuf->st_mtime=current_time;
+    stbuf->st_ctime=current_time;
     calc_time_stop(&getattr_calls, &getattr_avg_time);
     return 0;
   }

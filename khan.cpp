@@ -183,44 +183,6 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-static int khan_getattr(const char *c_path, struct stat *stbuf) {
-  calc_time_start(&getattr_calls);
-  int res=0;
-  time_t current_time;
-  time(&current_time);
- 
-  if(0 == strcmp(c_path,"/")) {
-    log_msg("looking at root");
-    stbuf->st_mode=S_IFDIR | 0555;
-    string types=database_getval("allfiles","types");
-    stbuf->st_nlink=count_string(types)+2;
-    stbuf->st_size=4096;
-    stbuf->st_atime=current_time;
-    stbuf->st_mtime=current_time;
-    stbuf->st_ctime=current_time;
-    calc_time_stop(&getattr_calls, &getattr_avg_time);
-    return 0;
-  }
-
-  stringstream path(c_path+1);
-  string attr, val, file, more;
-  void* aint=getline(path, attr, '/');
-  void* vint=getline(path, val, '/');
-  void* mint=getline(path, more, '/');
-/*
-  if(aint) {
-    cout << "some path, not implemented" << endl;
-  } else {
-    vector<string> attrs = split(database_getvals("attrs"),":");
-    for(int i=0; i<attrs.size(); i++) {
-    }
-  }
-*/
-
-  calc_time_stop(&getattr_calls, &getattr_avg_time);
-  return -2;
-}
-
 vector<string> split(string str, string delim) {
   int start=0, end;
   vector<string> vec;
@@ -235,6 +197,52 @@ vector<string> split(string str, string delim) {
   }
   return vec;
 }
+
+
+static int khan_getattr(const char *c_path, struct stat *stbuf) {
+  calc_time_start(&getattr_calls);
+  int res=0;
+  time_t current_time;
+  time(&current_time);
+ 
+  if(0 == strcmp(c_path,"/")) {
+    log_msg("looking at root");
+    stbuf->st_mode=S_IFDIR | 0555;
+    string types=database_getval("allfiles","types");
+    stbuf->st_nlink=count_string(types)+2;
+    stbuf->st_size=4096;
+    stbuf->st_ctime=current_time;
+    calc_time_stop(&getattr_calls, &getattr_avg_time);
+    return 0;
+  }
+
+  stringstream path(c_path+1);
+  string attr, val, file, more;
+  void* aint=getline(path, attr, '/');
+  void* vint=getline(path, val, '/');
+  void* mint=getline(path, more, '/');
+
+  if(vint) {
+    cout << "some path, not implemented" << endl;
+  } else {
+    vector<string> attrs = split(database_getvals("attrs"),":");
+    for(int i=0; i<attrs.size(); i++) {
+      if(attrs[i] == attr) {
+        //matched an attr dir
+        string vals = database_getvals(attr);
+        stbuf->st_mode=S_IFDIR | 0555;
+        stbuf->st_nlink = count_string(vals)+2;
+        stbuf->st_size = 4096;
+        stbuf->st_ctime=current_time;
+        return 0;
+      }
+    }
+  }
+
+  calc_time_stop(&getattr_calls, &getattr_avg_time);
+  return -2;
+}
+
 
 static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
   calc_time_start(&readdir_calls);

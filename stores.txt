@@ -1,4 +1,2 @@
 laptop
 /home/drew/projects/mediakhan/khan_root laptop
-/home/drew/projects/mediakhan/remote1 pi
-/home/drew/projects/mediakhan/remote2 desktop

@@ -6,11 +6,11 @@
 
 // Includes
 #include "config.h"
-#include <fuse.h>
-#include <glob.h>
-#include <iostream>
-#include <string>
-#include <vector>
+#include <dirent.h> // opendir
+#include <fuse.h>  // fuse functions
+#include <glob.h>  // glob
+#include <iostream> // cout
+#include <vector> // vector
 
 // FUSE Paramaters
 #define FUSE_USE_VERSION 26

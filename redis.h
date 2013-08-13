@@ -15,12 +15,12 @@ class Redis: public Database {
   int last_id;
   public:
     void init();
-    vector<string> get(string key);
+    string get(string key);
     void set(string key, string value);
     int get_id();
     void remove(string key, string value);
     void hset(string hash, string key, string value);
-    vector<string> hget(string hash, string key);
+    string hget(string hash, string key);
     string type(string key);
 };
 

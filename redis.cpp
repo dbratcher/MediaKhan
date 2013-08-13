@@ -1,5 +1,8 @@
 #include "redis.h"
 
+/*
+utils may be handy one day
+
 vector<string> split(string str, string delim) { 
   unsigned start = 0;
   unsigned end; 
@@ -20,6 +23,8 @@ string join(vector<string> vals, string delim) {
   }
   return ret;
 }
+*/
+
 
 void Redis::init() {
   struct timeval timeout = {3600, 0};
@@ -31,25 +36,17 @@ void Redis::init() {
   }
 }
 
-vector<string> Redis::get(string key) {
-  cout << "in get" << endl << flush;
-  vector<string> ret;
-  cout << "in get2" << endl << flush;
+string Redis::get(string key) {
+  string ret = "";
   reply = (redisReply*) redisCommand(context, ("get "+key).c_str());
-  cout << "in get3" << endl << flush;
-  if(reply->len > 0) {
-    ret = split(reply->str, ",");
+  if(reply->str) {
+    ret = reply->str;
   }
-  cout << "in get4" << endl << flush;
   return ret;
 }
 
 void Redis::set(string key, string value) {
-  cout << "in set" << endl << flush;
-  vector<string> vals = Redis::get(key);
-  vals.push_back(value);
-  string val = join(vals, ",");
-  redisCommand(context, ("set " + key + " " + val).c_str());
+  redisCommand(context, ("set " + key + " " + value).c_str());
 }
 
 int Redis::get_id() {
@@ -58,29 +55,26 @@ int Redis::get_id() {
 }
 
 void Redis::remove(string key, string value) {
-  vector<string> vals = Redis::get(key);
-  vector<string>::iterator it = find(vals.begin(), vals.end(), value);
-  if (it != vals.end()) {
-    vals.erase(it); 
-    string val = join(vals, ",");
-    redisCommand(context, ("set " + key + " " + val).c_str()); 
+  string vals = Redis::get(key);
+  size_t it = vals.find(value);
+  if (it != string::npos) {
+    vals.erase(it, value.length()); 
+    cout << "new string " << vals << endl;
+    redisCommand(context, ("set " + key + " " + vals).c_str()); 
   }
 }
 
-vector<string> Redis::hget(string hash, string key) {
-  vector<string> ret;
+string Redis::hget(string hash, string key) {
+  string ret = "";
   reply = (redisReply*) redisCommand(context, ("hget "+hash+" "+key).c_str());
   if(reply->len > 0) {
-    ret = split(reply->str, ",");
+    ret = reply->str;
   }
   return ret;
 }
 
 void Redis::hset(string hash, string key, string value) {
-  vector<string> vals = Redis::hget(hash, key);
-  vals.push_back(value);
-  string val = join(vals, ",");
-  redisCommand(context, ("hset " + hash + " " + key + " " + val).c_str());
+  redisCommand(context, ("hset " + hash + " " + key + " " + value).c_str());
 }
 
 string Redis::type(string key) {

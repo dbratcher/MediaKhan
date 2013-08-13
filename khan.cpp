@@ -182,7 +182,8 @@ void process_stores(const char* store_filename) {
 }
 
 void move_to_root() {
-  if(chdir(this_server.c_str()) != 0) {
+  cout << "Attempting to open " << this_server << endl;
+  if(opendir(this_server.c_str()) == NULL) {
     cout << "Could not open this server root." << endl;
     cout << "Aborting..." << endl;
     exit(1);
@@ -222,27 +223,32 @@ void load_system_metadata() {
 
 void load_file_metadata() {
   cout << "Loading metadata for every file." << endl;
+  int file_count = 0;
   for(int i=0; i<servers.size(); i++) {
     glob_t files;
-    glob((servers.at(i)+"/*.*").c_str(),0,NULL,&files);
+    string server = servers.at(i);
+    string server_id = server_ids.at(i);
+    glob((server+"/*.*").c_str(),0,NULL,&files);
     for(int j=0; j<files.gl_pathc; j++) {
+      file_count += 1;
       string file = files.gl_pathv[j];
       string ext = strrchr(file.c_str(),'.')+1;
       string filename=strrchr(file.c_str(),'/')+1;
+      cout << "file: " << file << endl;
+      cout << "server: " << server << endl;
+      cout << "server_id: " << server_id << endl;
+      cout << "extension: " << ext << endl;
+      cout << "filename: " << filename << endl << endl;
     }
   }
+  cout << file_count << " files discoverd..." << endl;
 }
 
 void load_all_metadata(bool force) {
   if(!force) {
     string state = "";
-    cout << "here" << endl; 
-    vector<string> vals = database->get("state");
-    cout << "here2"<< endl << flush; 
-    if(vals.size()>0) {
-      state = vals.at(0);
-    }
-    if(state == "loaded") {
+    string loaded = database->get("state");
+    if(loaded == "loaded") {
       cout << "Database already has metadata." << endl;
       cout << "Continuing..." << endl;
       return;
@@ -316,15 +322,10 @@ int main(int argc, char* argv[]) {
   }
 
   // setup system
-  cout << "process stores" << endl << flush;
   process_stores(store_filename);
-  cout << "move to root" << endl << flush;
   move_to_root();
-  cout << "clear mount" << endl << flush;
   clear_mount(argv[1]);
-  cout << "start database" << endl << flush;
   start_database();
-  cout << "load metadata" << endl << flush;
   load_all_metadata(false);
 
   return fuse_main(khan_args.argc, khan_args.argv, &khan_ops, NULL);

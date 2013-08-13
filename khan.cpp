@@ -234,7 +234,7 @@ static int khan_getattr(const char *c_path, struct stat *stbuf) {
         if(vint) {
           vector<string> vals = split(content,":");
           for(int j=0; j<vals.size(); j++) {
-            if(vals[i] == val) {
+            if(vals[j] == val) {
               content = database_getval(attr, val);
               if(mint) {
                 cout << "long path, not supported" << endl;
@@ -259,6 +259,12 @@ static int khan_getattr(const char *c_path, struct stat *stbuf) {
   return -2;
 }
 
+void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content) {
+  vector<string> contents = split(content, ":");
+  for(int i=0; i<contents.size(); i++) {
+    filler(buf, contents[i].c_str(), NULL, 0);
+  }
+}
 
 static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
   calc_time_start(&readdir_calls);
@@ -271,14 +277,31 @@ static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off
   void* vint=getline(path, val, '/');
   void* mint=getline(path, more, '/');
 
+  string content = database_getvals("attrs");
   if(aint) {
-    cout << "some path, not implemented" << endl;
-  } else {
-    // at root, return all attrs
-    vector<string> attrs = split(database_getvals("attrs"),":");
+    vector<string> attrs = split(content,":");
     for(int i=0; i<attrs.size(); i++) {
-      filler(buf, attrs[i].c_str(), NULL, 0);
+      if(attrs[i] == attr) {
+        content = database_getvals(attr);
+        if(vint) {
+          vector<string> vals = split(content,":");
+          for(int j=0; j<vals.size(); j++) {
+            if(vals[j] == val) {
+              content = database_getval(attr, val);
+              if(mint) {
+                cout << "long path, not supported" << endl;
+              } else {
+                dir_pop_buf(buf, filler, content); 
+              }
+            }
+          }  
+        } else { 
+          dir_pop_buf(buf, filler, content);
+        }
+      }
     }
+  } else {
+    dir_pop_buf(buf, filler, content);
   }
 
   calc_time_stop(&readdir_calls, &readdir_avg_time);

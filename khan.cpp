@@ -1448,56 +1448,56 @@ static int khan_process_arg(void *data, const char *arg, int key, struct fuse_ar
         }
 }
 
-static struct fuse_operations xmp_oper;
+static struct fuse_operations khan_ops;
 
 
 int main(int argc, char *argv[])
 {
-  xmp_oper.getattr  = xmp_getattr;
-  xmp_oper.init     = khan_init;
-  xmp_oper.access    = xmp_access;
-  xmp_oper.readlink  = xmp_readlink;
-  xmp_oper.readdir  = xmp_readdir;
-  xmp_oper.mknod    = xmp_mknod;
-  xmp_oper.mkdir    = xmp_mkdir;
-  xmp_oper.symlink  = xmp_symlink;
-  xmp_oper.unlink    = xmp_unlink;
-  xmp_oper.rmdir    = xmp_rmdir;
-  xmp_oper.rename    = xmp_rename;
-  xmp_oper.link    = xmp_link;
-  xmp_oper.chmod    = xmp_chmod;
-  xmp_oper.chown    = xmp_chown;
-  xmp_oper.truncate  = xmp_truncate;
-  xmp_oper.create   = khan_create;
-  xmp_oper.utimens  = xmp_utimens;
-  xmp_oper.open    = khan_open;
-  xmp_oper.read    = xmp_read;
-  xmp_oper.write    = xmp_write;
-  xmp_oper.statfs    = xmp_statfs;
-  xmp_oper.release  = xmp_release;
-  xmp_oper.fsync    = xmp_fsync;
-  xmp_oper.opendir  = khan_opendir;
-  xmp_oper.flush    = khan_flush;
+  khan_ops.getattr  = xmp_getattr;
+  khan_ops.init     = khan_init;
+  khan_ops.access    = xmp_access;
+  khan_ops.readlink  = xmp_readlink;
+  khan_ops.readdir  = xmp_readdir;
+  khan_ops.mknod    = xmp_mknod;
+  khan_ops.mkdir    = xmp_mkdir;
+  khan_ops.symlink  = xmp_symlink;
+  khan_ops.unlink    = xmp_unlink;
+  khan_ops.rmdir    = xmp_rmdir;
+  khan_ops.rename    = xmp_rename;
+  khan_ops.link    = xmp_link;
+  khan_ops.chmod    = xmp_chmod;
+  khan_ops.chown    = xmp_chown;
+  khan_ops.truncate  = xmp_truncate;
+  khan_ops.create   = khan_create;
+  khan_ops.utimens  = xmp_utimens;
+  khan_ops.open    = khan_open;
+  khan_ops.read    = xmp_read;
+  khan_ops.write    = xmp_write;
+  khan_ops.statfs    = xmp_statfs;
+  khan_ops.release  = xmp_release;
+  khan_ops.fsync    = xmp_fsync;
+  khan_ops.opendir  = khan_opendir;
+  khan_ops.flush    = khan_flush;
 #ifdef APPLE
-  xmp_oper.setxattr  = xmp_setxattr;
-  xmp_oper.getxattr  = xmp_getxattr;
-  xmp_oper.listxattr  = xmp_listxattr;
-  xmp_oper.removexattr  = xmp_removexattr;
-  xmp_oper.setvolname     = xmp_setvolname;
-  xmp_oper.exchange       = xmp_exchange;
-  xmp_oper.getxtimes      = xmp_getxtimes;
-  xmp_oper.setbkuptime    = xmp_setbkuptime;
-  xmp_oper.setchgtime     = xmp_setchgtime;
-  xmp_oper.setcrtime      = xmp_setcrtime;
-  xmp_oper.chflags        = xmp_chflags;
-  xmp_oper.setattr_x      = xmp_setattr_x;
-  xmp_oper.fsetattr_x     = xmp_fsetattr_x;
+  khan_ops.setxattr  = xmp_setxattr;
+  khan_ops.getxattr  = xmp_getxattr;
+  khan_ops.listxattr  = xmp_listxattr;
+  khan_ops.removexattr  = xmp_removexattr;
+  khan_ops.setvolname     = xmp_setvolname;
+  khan_ops.exchange       = xmp_exchange;
+  khan_ops.getxtimes      = xmp_getxtimes;
+  khan_ops.setbkuptime    = xmp_setbkuptime;
+  khan_ops.setchgtime     = xmp_setchgtime;
+  khan_ops.setcrtime      = xmp_setcrtime;
+  khan_ops.chflags        = xmp_chflags;
+  khan_ops.setattr_x      = xmp_setattr_x;
+  khan_ops.fsetattr_x     = xmp_fsetattr_x;
 #endif
 
 
   int retval=0;
   struct khan_param param = { 0, 0, NULL, 0 };
-  if((argc<3)||(argc>4)) {
+  if((argc<2)||(argc>4)) {
     printf("Usage: ./khan <mount_dir_location> [stores.txt] [-d]\nAborting...\n");
     exit(1);
   }
@@ -1539,7 +1539,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   log_msg("initialized....");
-  retval=fuse_main(args.argc,args.argv, &xmp_oper, khan_data);
+  retval=fuse_main(args.argc,args.argv, &khan_ops, khan_data);
   log_msg("Done with fuse_main...\n");
   return retval;
 }

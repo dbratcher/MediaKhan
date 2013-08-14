@@ -36,12 +36,11 @@ void process_filetypes(string server) {
     database_setval("allfiles","types",line);
     database_setval(line,"attrs","name");
     database_setval("namegen","command","basename");
-    database_setval(line,"attrs","type");
-    database_setval("typegen","command","ext.pl");
+    database_setval(line,"attrs","ext");
     string ext=line;
     getline(filetypes_file,line);
     const char *firstchar=line.c_str();
-    while(firstchar[0]=='-'){
+    while(firstchar[0]=='-') {
       //add line to vold under filetype as vold
       stringstream ss(line.c_str());
       string attr;
@@ -165,9 +164,6 @@ int initializing_khan(char * mnt_dir) {
 
 
 int khan_opendir(const char *c_path, struct fuse_file_info *fi) {
-  string path = this_server + c_path;
-  DIR* dp = opendir(path.c_str());
-  fi->fh = (intptr_t) dp;
   return 0;
 }
 
@@ -187,82 +183,165 @@ vector<string> split(string str, string delim) {
   int start=0, end;
   vector<string> vec;
   while((end = str.find(delim, start)) != string::npos) {
-    if(end-start>delim.length()) {
+    if(str.substr(start, end-start).length()>0) {
       vec.push_back(str.substr(start, end-start));
     }
     start = end+delim.length();
   }
-  if(end-start>delim.length()) {
+  if(str.substr(start).length()>0) {
     vec.push_back(str.substr(start));
   }
   return vec;
 }
 
+bool content_has(string vals, string val, bool convert) {
+  vector<string> checks = split(vals,":");
+  for(int i=0; i<checks.size(); i++) {
+    if(convert) {
+      string filename = database_getval(checks[i],"name");
+      if(filename == val) {
+        return true;
+      }
+    } else {
+      if(checks[i]==val) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void dir_pop_stbuf(struct stat* stbuf, string contents) {
   time_t current_time;
   time(&current_time);
-  stbuf->st_mode=S_IFDIR | 0555;
+  stbuf->st_mode=S_IFDIR | 0755;
   stbuf->st_nlink=count_string(contents)+1;
   stbuf->st_size=4096;
   stbuf->st_mtime=current_time;
 }
 
+void file_pop_stbuf(struct stat* stbuf, string contents) {
+  time_t current_time;
+  time(&current_time);
+  stbuf->st_mode=S_IFREG | 0666;
+  stbuf->st_nlink=1;
+  stbuf->st_size=4096;
+  stbuf->st_mtime=current_time;
+}
 
-static int khan_getattr(const char *c_path, struct stat *stbuf) {
-  calc_time_start(&getattr_calls);
- 
-  if(0 == strcmp(c_path,"/")) {
-    log_msg("looking at root");
-    string types=database_getvals("attrs");
-    dir_pop_stbuf(stbuf, types);
-    calc_time_stop(&getattr_calls, &getattr_avg_time);
-    return 0;
-  }
-
-  stringstream path(c_path+1);
+int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
   string attr, val, file, more;
   void* aint=getline(path, attr, '/');
   void* vint=getline(path, val, '/');
+  void* fint=getline(path, file, '/');
   void* mint=getline(path, more, '/');
-
-  if(aint) {
-    string content = database_getvals("attrs");
-    vector<string> attrs = split(content,":");
-    for(int i=0; i<attrs.size(); i++) {
-      if(attrs[i] == attr) {
+  bool loop = true;
+  while(loop) {
+    loop = false;
+    if(aint) {
+      string content = database_getvals("attrs");
+      if(content_has(content, attr, false)) {
         content = database_getvals(attr);
         if(vint) {
-          vector<string> vals = split(content,":");
-          for(int j=0; j<vals.size(); j++) {
-            if(vals[j] == val) {
-              content = database_getval(attr, val);
-              if(mint) {
-                cout << "long path, not supported" << endl;
-              } else {
-                dir_pop_stbuf(stbuf, content);
-                calc_time_stop(&getattr_calls, &getattr_avg_time);
-                return 0;
-                
+          if(content_has(content, val, false)) {
+            string dir_content = database_getval(attr, val);
+            string attrs_content = database_getvals("attrs");
+            if(fint) {
+              if(content_has(dir_content, file, true)) {
+                if(!mint) {
+                  // /attr/val/file path
+                  file_pop_stbuf(stbuf, file);
+                  return 0;
+                }
+              } else if(content_has(attrs_content, file, false)) {
+                //repeat with aint = fint, vint = mint, etc
+                aint = fint;
+                attr = file;
+                vint = mint;
+                val = more;
+                loop = true;
               }
-            }
-          }  
+            } else {
+              // /attr/val dir
+              dir_pop_stbuf(stbuf, dir_content+attrs_content);
+              return 0;
+            }  
+          } 
         } else { 
+          // /attr dir
           dir_pop_stbuf(stbuf, content);
-          calc_time_stop(&getattr_calls, &getattr_avg_time);
           return 0;
         }
       }
+    } else {
+      string types=database_getvals("attrs");
+      dir_pop_stbuf(stbuf, types);
+      return 0;
     }
   }
-
-  calc_time_stop(&getattr_calls, &getattr_avg_time);
   return -2;
 }
 
-void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content) {
+static int khan_getattr(const char *c_path, struct stat *stbuf) {
+  calc_time_start(&getattr_calls);
+  stringstream path(c_path+1);
+  int ret = populate_getattr_buffer(stbuf, path);
+  calc_time_stop(&getattr_calls, &getattr_avg_time);
+  return ret;
+}
+
+void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert) {
   vector<string> contents = split(content, ":");
   for(int i=0; i<contents.size(); i++) {
-    filler(buf, contents[i].c_str(), NULL, 0);
+    if(convert) {
+      string filename = database_getval(contents[i].c_str(), "name");
+      filler(buf, filename.c_str(), NULL, 0);
+    } else {
+      filler(buf, contents[i].c_str(), NULL, 0);
+    }
+  }
+}
+
+int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
+  string attr, val, file, more;
+  void* aint=getline(path, attr, '/');
+  void* vint=getline(path, val, '/');
+  void* fint=getline(path, file, '/');
+  void* mint=getline(path, more, '/');
+  bool loop = true;
+  while(loop) {
+    loop = false;
+    string content = database_getvals("attrs");
+    if(aint) {
+      if(content_has(content, attr, false)) {
+        content = database_getvals(attr);
+        if(vint) {
+          if(content_has(content, val, false)) {
+            string dir_content = database_getval(attr, val);
+            string attrs_content = database_getvals("attrs");
+            if(fint) {
+              if(content_has(attrs_content, file, false)) {
+                //repeat with aint = fint, vint = mint, etc
+                aint = fint;
+                attr = file;
+                vint = mint;
+                val = more;
+                loop = true;
+              }
+            } else {
+              // /attr/val dir
+              dir_pop_buf(buf, filler, dir_content, true);
+              dir_pop_buf(buf, filler, attrs_content, false);
+            }  
+          } 
+        } else { 
+          // /attr dir
+          dir_pop_buf(buf, filler, content, false);
+        }
+      }
+    } else {
+      dir_pop_buf(buf, filler, content, false);
+    }
   }
 }
 
@@ -270,57 +349,15 @@ static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off
   calc_time_start(&readdir_calls);
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
-  
   stringstream path(c_path+1);
-  string attr, val, file, more;
-  void* aint=getline(path, attr, '/');
-  void* vint=getline(path, val, '/');
-  void* mint=getline(path, more, '/');
-
-  string content = database_getvals("attrs");
-  if(aint) {
-    vector<string> attrs = split(content,":");
-    for(int i=0; i<attrs.size(); i++) {
-      if(attrs[i] == attr) {
-        content = database_getvals(attr);
-        if(vint) {
-          vector<string> vals = split(content,":");
-          for(int j=0; j<vals.size(); j++) {
-            if(vals[j] == val) {
-              content = database_getval(attr, val);
-              if(mint) {
-                cout << "long path, not supported" << endl;
-              } else {
-                dir_pop_buf(buf, filler, content); 
-              }
-            }
-          }  
-        } else { 
-          dir_pop_buf(buf, filler, content);
-        }
-      }
-    }
-  } else {
-    dir_pop_buf(buf, filler, content);
-  }
-
+  populate_readdir_buffer(buf, filler, path);
   calc_time_stop(&readdir_calls, &readdir_avg_time);
   return 0;
 }
 
-int khan_open(const char *path, struct fuse_file_info *fi)
-{
+int khan_open(const char *path, struct fuse_file_info *fi) {
   log_msg("in khan_open");
-  //update usage count
-  string filename = basename(strdup(path));
-  string fileid = database_getval("name",filename);
-  string val = database_getval(fileid, this_server_id);
-  int value = atoi(val.c_str())+1;
-  ostringstream new_val;
-  new_val << value;
-  cout << "new val:" << new_val.str() <<endl;
-  database_setval(fileid, this_server_id, new_val.str()); 
-  database_remove_val(fileid, this_server_id, val);
+  //todo:update usage count
   int retstat = 0;
   int fd;
   path=append_path2(basename(strdup(path)));

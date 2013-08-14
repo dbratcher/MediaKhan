@@ -220,12 +220,12 @@ void dir_pop_stbuf(struct stat* stbuf, string contents) {
   stbuf->st_mtime=current_time;
 }
 
-void file_pop_stbuf(struct stat* stbuf, string contents) {
+void file_pop_stbuf(struct stat* stbuf, string filename) {
   time_t current_time;
   time(&current_time);
   stbuf->st_mode=S_IFREG | 0666;
   stbuf->st_nlink=1;
-  stbuf->st_size=4096;
+  stbuf->st_size=get_file_size(filename);
   stbuf->st_mtime=current_time;
 }
 
@@ -259,6 +259,8 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
                 attr = file;
                 vint = mint;
                 val = more;
+                fint=getline(path, file, '/');
+                mint=getline(path, more, '/');
                 loop = true;
               }
             } else {
@@ -302,6 +304,7 @@ void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert
   }
 }
 
+
 int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
   string attr, val, file, more;
   void* aint=getline(path, attr, '/');
@@ -326,6 +329,8 @@ int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pat
                 attr = file;
                 vint = mint;
                 val = more;
+                fint = getline(path, file, '/');
+                mint = getline(path, more, '/');
                 loop = true;
               }
             } else {

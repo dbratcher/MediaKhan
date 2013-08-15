@@ -35,6 +35,7 @@ void process_filetypes(string server) {
     //add line to vold as file type
     database_setval("allfiles","types",line);
     database_setval(line,"attrs","name");
+    database_setval(line,"attrs","tags");
     database_setval("namegen","command","basename");
     database_setval(line,"attrs","ext");
     string ext=line;
@@ -274,7 +275,7 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
       if(content_has(content, attr, false)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false)) {
+          if(content_has(content, val, false) ||(attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = str_intersect(current, dir_content);
@@ -355,7 +356,7 @@ int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pat
       if(content_has(content, attr, false)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false)) {
+          if(content_has(content, val, false) ||(attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = intersect(current, dir_content);

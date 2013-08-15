@@ -11,14 +11,6 @@
 
 #define log stderr
 
-#ifdef APPLE
-  char* strdup(const char* str) {
-    char* newstr = (char*)malloc(strlen(str)+1);
-    strcpy(newstr, str);
-    return newstr;
-  }
-#endif
-
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
 vector<string> servers;
@@ -246,7 +238,7 @@ void dir_pop_stbuf(struct stat* stbuf, string contents) {
   time_t current_time;
   time(&current_time);
   stbuf->st_mode=S_IFDIR | 0755;
-  stbuf->st_nlink=count_string(contents)+1;
+  stbuf->st_nlink=count_string(contents)+2;
   stbuf->st_size=4096;
   stbuf->st_mtime=current_time;
 }
@@ -261,6 +253,7 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 }
 
 string resolve_hashtags(string path) {
+  cout << "resolving: " << path << " to ";
   vector<string> pieces = split(path, "/");
   for(int i=0; i<pieces.size(); i++) {
     if(pieces[i].at(0)=='#') {
@@ -272,12 +265,17 @@ string resolve_hashtags(string path) {
         //see if piece is in vals
         if(content_has(vals, pieces[i].substr(1), false)) {
           //if so piece now equals attr/val
-          pieces[i]=attr_vec[j]+"/"+vals;
+          pieces[i]=attr_vec[j]+"/"+pieces[i].substr(1);
         }
       }
     }
   }
-  return join(pieces, "/"); 
+  string ret = join(pieces, "/");
+  if(ret.length()>0) {
+    ret = ret.substr(1); 
+  }
+  cout << ret << endl;
+  return ret;
 }
 
 int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
@@ -342,7 +340,9 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
 
 static int khan_getattr(const char *c_path, struct stat *stbuf) {
   calc_time_start(&getattr_calls);
-  stringstream path(c_path+1);
+  string pre_processed = c_path+1;
+  string after = resolve_hashtags(pre_processed);
+  stringstream path(after);
   int ret = populate_getattr_buffer(stbuf, path);
   calc_time_stop(&getattr_calls, &getattr_avg_time);
   return ret;
@@ -361,7 +361,7 @@ void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert
 }
 
 
-int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
+void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
   string attr, val, file, more;
   string current = "none";
   void* aint=getline(path, attr, '/');
@@ -415,7 +415,9 @@ static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off
   calc_time_start(&readdir_calls);
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
-  stringstream path(c_path+1);
+  string pre_processed = c_path+1;
+  string after = resolve_hashtags(pre_processed);
+  stringstream path(after);
   populate_readdir_buffer(buf, filler, path);
   calc_time_stop(&readdir_calls, &readdir_avg_time);
   return 0;
@@ -1166,8 +1168,11 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 #endif
   return 0;
 }
-
-static int xmp_getxattr(const char *path, const char *name, char *value, size_t size) {
+#ifdef APPLE
+  static int xmp_getxattr(const char *path, const char *name, char *value, size_t size, uint32_t param) {
+#else
+  static int xmp_getxattr(const char *path, const char *name, char *value, size_t size) {
+#endif
   return 0;
 }
 

@@ -66,7 +66,9 @@ int count_string(string tobesplit){
     stringstream ss(tobesplit.c_str());
     string token;
     while(getline(ss, token, ':')){
-      count++;
+      if(token.length()>0) {
+        count++;
+      }
     }
     return count;
   }

@@ -1,2 +1,2 @@
 laptop
-/home/drew/projects/mediakhan/khan_root laptop
+/Users/drewbratcher/projects/mediakhan/khan_root laptop

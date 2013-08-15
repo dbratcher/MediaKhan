@@ -194,6 +194,36 @@ vector<string> split(string str, string delim) {
   return vec;
 }
 
+string join(vector<string> these, string delim) {
+  string ret = "";
+  for(int i=0; i<these.size(); i++) {
+    ret+=delim;
+    ret+=these[i];
+  }
+  return ret;
+}
+
+bool find(string str, vector<string> arr) {
+  for(int i=0; i<arr.size(); i++) {
+    if(str == arr[i]) return true;
+  }
+  return false;
+}
+
+string str_intersect(string str1, string str2) {
+  vector<string> vec_1 = split(str1, ":");
+  vector<string> vec_2 = split(str2, ":");
+  vector<string> ret;
+  for(int i=0; i<vec_1.size(); i++) {
+    for(int j=0; j<vec_2.size(); j++) {
+       if((vec_1[i]==vec_2[j]) && (!find(vec_1[i], ret))) {
+         ret.push_back(vec_1[i]);
+       }
+    }
+  }
+  return join(ret,":");
+}
+
 bool content_has(string vals, string val, bool convert) {
   vector<string> checks = split(vals,":");
   for(int i=0; i<checks.size(); i++) {
@@ -231,6 +261,7 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 
 int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
   string attr, val, file, more;
+  string current = "none";
   void* aint=getline(path, attr, '/');
   void* vint=getline(path, val, '/');
   void* fint=getline(path, file, '/');
@@ -245,6 +276,9 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
         if(vint) {
           if(content_has(content, val, false)) {
             string dir_content = database_getval(attr, val);
+            if(current!="none") {
+              dir_content = str_intersect(current, dir_content);
+            }
             string attrs_content = database_getvals("attrs");
             if(fint) {
               if(content_has(dir_content, file, true)) {
@@ -261,6 +295,7 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
                 val = more;
                 fint=getline(path, file, '/');
                 mint=getline(path, more, '/');
+                current = dir_content;
                 loop = true;
               }
             } else {
@@ -307,6 +342,7 @@ void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert
 
 int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
   string attr, val, file, more;
+  string current = "none";
   void* aint=getline(path, attr, '/');
   void* vint=getline(path, val, '/');
   void* fint=getline(path, file, '/');
@@ -321,6 +357,9 @@ int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pat
         if(vint) {
           if(content_has(content, val, false)) {
             string dir_content = database_getval(attr, val);
+            if(current!="none") {
+              dir_content = intersect(current, dir_content);
+            }
             string attrs_content = database_getvals("attrs");
             if(fint) {
               if(content_has(attrs_content, file, false)) {
@@ -331,6 +370,7 @@ int populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pat
                 val = more;
                 fint = getline(path, file, '/');
                 mint = getline(path, more, '/');
+                current = dir_content;
                 loop = true;
               }
             } else {

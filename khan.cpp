@@ -260,6 +260,26 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
   stbuf->st_mtime=current_time;
 }
 
+string resolve_hashtags(string path) {
+  vector<string> pieces = split(path, "/");
+  for(int i=0; i<pieces.size(); i++) {
+    if(pieces[i].at(0)=='#') {
+      string content = database_getvals("attrs");
+      vector<string> attr_vec = split(content, ":");
+      //for all attrs
+      for(int j=0; j<attr_vec.size(); j++) {
+        string vals = database_getvals(attr_vec[j]);
+        //see if piece is in vals
+        if(content_has(vals, pieces[i].substr(1), false)) {
+          //if so piece now equals attr/val
+          pieces[i]=attr_vec[j]+"/"+vals;
+        }
+      }
+    }
+  }
+  return join(pieces, "/"); 
+}
+
 int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
   string attr, val, file, more;
   string current = "none";

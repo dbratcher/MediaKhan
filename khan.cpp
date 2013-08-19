@@ -253,19 +253,28 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 }
 
 string resolve_hashtags(string path) {
-  cout << "resolving: " << path << " to ";
+  cout << "resolving: " << path << " to " << flush;
   vector<string> pieces = split(path, "/");
   for(int i=0; i<pieces.size(); i++) {
     if(pieces[i].at(0)=='#') {
-      string content = database_getvals("attrs");
-      vector<string> attr_vec = split(content, ":");
-      //for all attrs
-      for(int j=0; j<attr_vec.size(); j++) {
-        string vals = database_getvals(attr_vec[j]);
-        //see if piece is in vals
-        if(content_has(vals, pieces[i].substr(1), false)) {
-          //if so piece now equals attr/val
-          pieces[i]=attr_vec[j]+"/"+pieces[i].substr(1);
+      vector<string> hashes = split(pieces[i], "#");
+      pieces[i]="";
+      for(int j=0; j<hashes.size(); j++) {
+        string content = database_getvals("attrs");
+        vector<string> attr_vec = split(content, ":");
+        //for all attrs
+        for(int k=0; k<attr_vec.size(); k++) {
+          string vals = database_getvals(attr_vec[k]);
+          //see if piece is in vals
+          cout << endl << "checking " << hashes[j] << endl << vals <<endl;
+          if(content_has(vals, hashes[j], false)) {
+            cout <<"match"<<endl;
+            //if so piece now equals attr/val
+            if(pieces[i].length()>0) {
+              pieces[i]+="/";
+            }
+            pieces[i]+=attr_vec[k]+"/"+hashes[j];
+          }
         }
       }
     }
@@ -274,7 +283,7 @@ string resolve_hashtags(string path) {
   if(ret.length()>0) {
     ret = ret.substr(1); 
   }
-  cout << ret << endl;
+  cout << ret << endl << flush;
   return ret;
 }
 

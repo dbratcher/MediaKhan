@@ -28,6 +28,7 @@ void process_filetypes(string server) {
     database_setval("allfiles","types",line);
     database_setval(line,"attrs","name");
     database_setval(line,"attrs","tags");
+    database_setval(line,"attrs","location");
     database_setval("namegen","command","basename");
     database_setval(line,"attrs","ext");
     string ext=line;
@@ -143,6 +144,7 @@ int initializing_khan(char * mnt_dir) {
       string fileid = database_setval("null","name",filename);
       database_setval(fileid,"ext",ext);
       database_setval(fileid,"server",servers.at(i));
+      database_setval(fileid,"location",server_ids.at(i));
       for(int k=0; k<server_ids.size(); k++) {
         database_setval(fileid, server_ids.at(k), "0");
       }

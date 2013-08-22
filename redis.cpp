@@ -1,7 +1,5 @@
 #include "redis.h"
 
-
-int redis_last_id=1;
 redisContext *c;
 redisReply *reply=NULL;
 
@@ -20,178 +18,111 @@ bool redis_init() {
 
 
 string redis_getval(string file_id, string col) {
-    reply = (redisReply *)redisCommand(c,("get "+file_id).c_str());
+  reply = (redisReply *)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
+
+  string output = "null";
     
-    if(reply->len==0) {
-        return "null";
-    }
+  if(reply->len!=0) {
+    output = reply->str;
+  }
 
-    string output=reply->str;
-    size_t exact=output.find("~"+col+":");
-    string another="null";
-
-    if(exact!=string::npos) {
-        another=output.substr(exact);
-        another=another.substr(2+col.length());
-        size_t exact2=another.find("~");
-        
-        if(exact2==string::npos) {
-            exact2=another.find("}");
-        }
-
-        another=another.substr(0,exact2);
-    }
-
-    // hget file_id, col
-
-    return another;
+  return output;
 }
 
 string redis_getkey_cols(string col) {
-    reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-    string output="";
+  reply = (redisReply *)redisCommand(c,"hkeys %s",col.c_str());
+  cout << "fetching col " << col << endl;
+  string output = "null";
 
-    if(reply->len!=0) {
-    	output=reply->str;
+  if(reply->elements!=0) {
+    output = "";
+    for(int i=0; i<reply->elements; i++) {
+      output = output + reply->element[i]->str + ":";
     }
+  } else if(reply->len!=0) {
+    output = reply->str;
+  }
+  cout << "returned " << output << endl;
+  return output;
 
-    string ret_val="";
-    stringstream ss(output);
-    string val;
-
-    while(getline(ss,val,'~')) {
-    	stringstream ss2(val);
-    	getline(ss2, val, ':');
-    	ret_val+=val+":";
-    }
-
-    // hkeys col
-
-    return ret_val;
 }
 
 
-string redis_setval(string file_id, string col, string val) {
-    
+string redis_setval(string file_id, string col, string val) {  
+  // generate file_id if needed
+  if(file_id.compare("null")==0) {
+    string file_id=redis_getval("redis_last_id","val");
+    cout << "got file id " << file_id << endl;	
     if(file_id.compare("null")==0) {
-	string out=redis_getval("redis_last_id","val");
-	
-        if(out.compare("null")==0) {
-	    out="1";
-	}
-
-        string file_id=out;
-	redis_last_id=0;
-	redis_last_id=atoi(out.c_str());
-	redis_last_id++;//find non-local solution (other table?)
-	ostringstream result;
-	result<<redis_last_id;
-	redis_remove_val("redis_last_id","val",out);
-	redis_setval("redis_last_id","val",result.str());
-	redis_setval(file_id,col,val);
-	return file_id;
+      file_id="1";
     }
 
-
-    //handle file_id key
-    reply = (redisReply *)redisCommand(c,("get "+file_id).c_str());
-    string output;
-    
+    int redis_last_id=0;
+    redis_last_id=atoi(file_id.c_str());
+    redis_last_id++;//find non-local solution (other table?)
+    ostringstream result;
+    result<<redis_last_id;
+    cout << "removing " << file_id << endl;
+    redis_remove_val("redis_last_id","val",file_id);
+    reply = (redisReply*)redisCommand(c,"hget redis_last_id val");
     if(reply->len!=0) {
-        output=reply->str;
-    } else {
-	//create this specific file id
-	output="";
+      string rep_str = reply->str;
+      cout << "did it take?" << rep_str << endl;
     }
-    
-    string store=output;
-    string rest;
-    
-    if(store.find("~"+col+":")!=string::npos) {//col already set
-        string setval=redis_getval(file_id,col);
-	int len=setval.length();
-	
-        if(setval.find(val)==string::npos) {
-	    setval+=":"+val;
-	}
-	
-        store.replace(store.find("~"+col+":")+2+col.length(),len,setval);
-    } else {
-	store+="~"+col+":"+val;
-    }
-    
-    reply = (redisReply *)redisCommand(c,"set %s %s",file_id.c_str(),store.c_str());
-
-    //handle col key
-    reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-    output="";
-    
-    if(reply->len!=0) {
-	output=reply->str;
-    }
-    
-    store=output;
-    rest="";
-    
-    if(store.find("~"+val+":")!=string::npos) {//col already set
-        rest=store.substr(store.find("~"+val+":"));
-	rest=rest.substr(val.length()+2);
-	size_t exact2=rest.find("~");
-	
-        if(exact2!=string::npos) {
-	    rest=rest.substr(0,exact2);
-	}
-	
-        size_t orig_length=rest.length();
-	
-        if(rest.find(file_id)==string::npos) {
-	    rest+=":"+file_id;
-	}
-	
-        store=store.replace(store.find("~"+val+":")+2+val.length(),orig_length,rest);
-    } else {
-	store+="~"+val+":"+file_id;
-    }
-    
-    reply = (redisReply *)redisCommand(c,"set %s %s",col.c_str(),store.c_str());
+    cout << "setting " << result.str() << endl;
+    redis_setval("redis_last_id","val",result.str());
+    file_id = result.str();
+    redis_setval(file_id,col,val);
+    cout << "returning " << file_id;
     return file_id;
+  }
+
+  // handle file_id key
+  reply = (redisReply*)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
+  string output = val;
+    
+  if(reply->len != 0) {
+    string rep_str = reply->str;
+    output = rep_str + ":" + output;
+  }
+    
+  reply = (redisReply*)redisCommand(c,"hset %s %s %s",file_id.c_str(),col.c_str(),output.c_str());
+
+  //handle col key
+  reply = (redisReply*)redisCommand(c,"hget %s %s",col.c_str(),val.c_str());
+  output = file_id;
+    
+  if(reply->len != 0) {
+    string rep_str = reply->str;
+    output = rep_str + ":" + output;
+  }
+    
+  reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(),output.c_str());
+  return file_id;
 }
 
 
 
 void redis_remove_val(string fileid, string col, string val){
-  string replaced=redis_getval(fileid,col);
-    
-  if(replaced.find(val)!=string::npos) {
-      //remove from file entry
-      reply = (redisReply *)redisCommand(c,("get "+fileid).c_str());
-      string srep = reply->str;
-      int len=srep.find("~"+col+":");
-      int len2 = srep.find(val, len+1);
-      srep.replace(len2, val.length()+1, "");
-      int len1 = srep.find("~",len+1);
-      len2 = srep.find(":",len+1);
-      if(len2>len1) {
-        srep.replace(len, len1-len, "");
-      }
-      reply = (redisReply *)redisCommand(c,"set %s %s", fileid.c_str(), srep.c_str());
-
-      //remove from col entry
-      reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-      string sout=reply->str;
-      len=sout.find("~"+val+":");
-      len2=sout.find("~",len+1);
-        
-      if(len2>0) {
-          sout.replace(len,len2-len,"");
-      } else if(len>0) {
-          sout.replace(len,sout.length(),"");
-      } else {
-          sout="";
-      }
-
-      reply = (redisReply *)redisCommand(c,"set %s %s", col.c_str(),sout.c_str());
+  cout << "in remove val" << endl;
+  reply = (redisReply*)redisCommand(c,"hget %s %s",fileid.c_str(),col.c_str());
+  if(reply->len != 0 ) {
+    string source = reply->str;
+    cout << "got " << source << endl;
+    size_t found = source.find(val);
+    if(found != string::npos) {
+      source.erase(found, val.length());
+      cout << "after erase " << source << endl;
     }
+    if(source.length()>0) {
+      redisCommand(c,"hset %s %s %s",fileid.c_str(),col.c_str(),source.c_str());
+    } else { 
+      redisCommand(c,"hdel %s %s",fileid.c_str(),col.c_str());
+    }
+  }
+  
+  //remove from col entry
+  reply = (redisReply *)redisCommand(c,"hdel %s %s",col.c_str(),val.c_str());
 }
 
 

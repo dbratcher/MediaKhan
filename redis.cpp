@@ -47,37 +47,6 @@ string redis_getval(string file_id, string col) {
     return another;
 }
 
-
-string redis_getkeys(string col, string val) {
-    string key_query=col;
-    reply = (redisReply *)redisCommand(c,("get "+key_query).c_str());
-
-    if(reply->len == 0) {
-        return "null";
-    }
-
-    string output=reply->str;
-    string another="";
-    size_t exact=output.find("~"+val+":");
-    
-    if (exact!=string::npos) {
-        another=output.substr(exact);
-	another=another.substr(2+val.length());
-	size_t exact2=another.find("~");
-	
-        if(exact2==string::npos) {
-	    exact2=another.find("}");
-        }
-
-        another=another.substr(0,exact2);
-    }
-    
-    // hget col, val
-
-    return another;
-}
-
-
 string redis_getkey_cols(string col) {
     reply = (redisReply *)redisCommand(c,("get "+col).c_str());
     string output="";

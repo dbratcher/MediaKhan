@@ -102,34 +102,6 @@ string database_getval(string col, string val){
   #endif
 }
 
-string database_getkeys(string file_id, string col){
-  col=trim(col);
-  file_id=trim(file_id);
-  #ifdef VOLDEMORT_FOUND
-  if(DATABASE==VOLDEMORT){
-    vold_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=voldemort_getkeys(file_id,col);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
-    return retstring;
-  }
-  #endif
-  #ifdef REDIS_FOUND
-  if(DATABASE==REDIS){
-    redis_calls++;
-    clock_gettime(CLOCK_REALTIME,&start);
-    string retstring=redis_getkeys(file_id,col);
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    redis_avg_time=(redis_avg_time*(redis_calls-1)+time_spent)/redis_calls;
-    return retstring;
-  }
-  #endif
-}
-
-
 string database_getvals(string col){
   col=trim(col);
   #ifdef VOLDEMORT_FOUND

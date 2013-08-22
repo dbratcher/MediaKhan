@@ -53,6 +53,5 @@ extern double redis_avg_time;
 bool init_database();
 string database_setval(string file_id, string col, string val);
 string database_getval(string col, string val);
-string database_getkeys(string file_id, string col);
 string database_getvals(string col);
 void database_remove_val(string file, string col, string val);

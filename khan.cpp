@@ -255,7 +255,6 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 }
 
 string resolve_hashtags(string path) {
-  cout << "resolving: " << path << " to " << flush;
   vector<string> pieces = split(path, "/");
   for(int i=0; i<pieces.size(); i++) {
     if(pieces[i].at(0)=='#') {
@@ -269,9 +268,7 @@ string resolve_hashtags(string path) {
         for(int k=0; k<attr_vec.size(); k++) {
           string vals = database_getvals(attr_vec[k]);
           //see if piece is in vals
-          cout << endl << "checking " << hashes[j] << endl << vals <<endl;
           if(content_has(vals, hashes[j], false)) {
-            cout <<"match"<<endl;
             //if so piece now equals attr/val
             if(pieces[i].length()>0) {
               pieces[i]+="/";
@@ -290,7 +287,6 @@ string resolve_hashtags(string path) {
   if(ret.length()>0) {
     ret = ret.substr(1); 
   }
-  cout << ret << endl << flush;
   return ret;
 }
 

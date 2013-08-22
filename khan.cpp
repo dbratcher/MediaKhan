@@ -262,6 +262,7 @@ string resolve_hashtags(string path) {
       vector<string> hashes = split(pieces[i], "#");
       pieces[i]="";
       for(int j=0; j<hashes.size(); j++) {
+        bool matched = false;
         string content = database_getvals("attrs");
         vector<string> attr_vec = split(content, ":");
         //for all attrs
@@ -275,8 +276,12 @@ string resolve_hashtags(string path) {
             if(pieces[i].length()>0) {
               pieces[i]+="/";
             }
+            matched = true;
             pieces[i]+=attr_vec[k]+"/"+hashes[j];
           }
+        }
+        if(!matched) {
+          pieces[i]+="tags/"+hashes[j];
         }
       }
     }
@@ -304,7 +309,7 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
       if(content_has(content, attr, false)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false) ||(attr=="tags")) {
+          if(content_has(content, val, false) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = str_intersect(current, dir_content);
@@ -387,7 +392,7 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
       if(content_has(content, attr, false)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false) ||(attr=="tags")) {
+          if(content_has(content, val, false) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = intersect(current, dir_content);
@@ -788,93 +793,7 @@ static int xmp_symlink(const char *from, const char *to) {
 
 static int xmp_rename(const char *from, const char *to) {
   calc_time_start(&rename_calls);
-  log_msg("in xmp_rename");
-  int res;
-        sprintf(msg, "0000000000000000000000000000000000000000000000000000000000000000000000000\n-----------------------------In rename from %s to %s\n",from, to);
-        log_msg(msg);
-
-  //get from fileid
-  cout <<basename(strdup(from)) << " is the filename "<<endl;
-  string fileid=database_getval("name",basename(strdup(from)));
-  cout << "moving internal file(manipulating attrs):"<<fileid<<endl;
-
-
-  if(strcmp(basename(strdup(from)),basename(strdup(to)))!=0){
-    rename(append_path2(basename(strdup(from))), append_path2(basename(strdup(to))));
-    string fromext=database_getval(fileid,"ext");
-    string file=append_path2(basename(strdup(from)));
-    string attrs=database_getval(fromext,"attrs");
-    cout << fromext <<  fileid << endl;
-    cout<<"HERE!"<<endl;
-    database_remove_val(fileid,"attrs","all_"+fromext+"s");
-    cout<<"THERE!"<<endl;
-    //database_remove_val("all_"+fromext+"s",strdup(basename(strdup(from))),fileid);
-    cout<<"WHERE!"<<endl;
-    string token="";
-    stringstream ss2(attrs.c_str());
-    while(getline(ss2,token,':')){
-      if(strcmp(token.c_str(),"null")!=0){
-        string cmd=database_getval(token+"gen","command");
-        string msg2=(cmd+" "+file).c_str();
-        FILE* stream=popen(msg2.c_str(),"r");
-        if(fgets(msg,200,stream)!=0){
-          database_remove_val(fileid,token,msg);
-        }
-                                pclose(stream);
-      }
-    }
-    //remove from from database
-  }
-
-
-
-
-  //set fileid name to basename(to)
-  database_remove_val(fileid,"name",basename(strdup(from)));
-  database_setval(fileid,"name",basename(strdup(to)));
-
-  //decompose from path
-  string type, attr, val, file;
-  stringstream ss(from);
-  void* tint=getline(ss,type,'/');
-  tint=getline(ss,type,'/');
-
-
-  //decompose to path
-  stringstream ss2(to);
-  tint=getline(ss2,type,'/');
-  tint=getline(ss2,type,'/');
-  if(tint){
-    void* aint=getline(ss2,attr,'/');
-    void* vint=getline(ss2,val,'/');
-
-    //for each attr/val pair
-    while(aint && vint) {
-      //if attr is not there
-      if(database_getval(type,"attrs").find(attr)==string::npos){
-        //add attr to type
-        database_setval(type,"attrs",attr);
-      }
-
-      //database-set fileid attr val
-      database_setval(fileid,attr,val);
-      aint=getline(ss2,attr,'/');
-      vint=getline(ss2,val,'/');
-
-    }
-  }
-
-  //if to dir is in all dirs, remove it
-  string dirs=database_getval("alldirs","paths");
-  stringstream dd(dirs);
-  string sto=to;
-  string tok;
-  while(getline(dd,tok,':')){
-    cout<<"4comparing sto:"<<sto<<" to tok:"<<tok<<endl;
-    if(sto.find(tok)!=string::npos){
-      database_remove_val("alldirs","paths",tok);
-    }
-  }
+  cout << "Rename " << from << " to " << to << endl;
   calc_time_stop(&rename_calls, &rename_avg_time);
   return 0;
 }

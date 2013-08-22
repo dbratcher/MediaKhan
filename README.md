@@ -51,7 +51,7 @@ A distributed fuse-based media filesystem.
 2. Create /tmp/fuse/ if necessary
 3. Call ./khan /tmp/fuse/ -d. (will show debug messages for filesystem - type mkdir stats to see timing info) On MacOSX use -s instead of -d, or if you must see the debug output use -s and -d and only view the system through Finder. (the terminal causes it to crash occasionally when in debug mode)
 4. Look at /tmp/fuse to see filesystem in another prompt.
-5. shopt -u interactive_commands allows for hashtag path support on ubuntu
+5. shopt -u interactive_commands on ubuntu, interactive_comments on mac, allows for hashtag path support
 
 ### 3. Server Configuration
 

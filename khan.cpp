@@ -457,8 +457,6 @@ int khan_open(const char *path, struct fuse_file_info *fi) {
 int xmp_access(const char *path, int mask)
 {
     calc_time_start(&access_calls);
-    fprintf(log, "in xmp_access with path: %s\n", path);
-
     char *path_copy=strdup(path);
   if(strcmp(path,"/")==0) {
     log_msg("at root");
@@ -793,7 +791,11 @@ static int xmp_symlink(const char *from, const char *to) {
 
 static int xmp_rename(const char *from, const char *to) {
   calc_time_start(&rename_calls);
-  cout << "Rename " << from << " to " << to << endl;
+  string src = basename(strdup(from));
+  string dst = basename(strdup(to));
+  string fileid = database_getval("name", from);
+  database_setval(fileid,"name",dst);
+  database_remove_val(fileid,"name",src);
   calc_time_stop(&rename_calls, &rename_avg_time);
   return 0;
 }

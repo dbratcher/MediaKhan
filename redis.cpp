@@ -42,6 +42,8 @@ string redis_getval(string file_id, string col) {
         another=another.substr(0,exact2);
     }
 
+    // hget file_id, col
+
     return another;
 }
 
@@ -69,33 +71,10 @@ string redis_getkeys(string col, string val) {
 
         another=another.substr(0,exact2);
     }
+    
+    // hget col, val
 
     return another;
-}
-
-
-string redis_getkey_values(string col) {
-    reply = (redisReply *)redisCommand(c,("get "+col).c_str());
-    string output="";
-    
-    if(reply->len!=0) {
-        output=reply->str;
-    }
-    
-    string ret_val="";
-    stringstream ss(output);
-    string val;
-    
-    while(getline(ss,val,'~')) {
-        stringstream ss2(val);
-	getline(ss2, val, ':');
-        
-        while(getline(ss2, val, ':')) {
-	    ret_val+=val;
-	}
-    }
-
-    return ret_val;
 }
 
 
@@ -116,6 +95,8 @@ string redis_getkey_cols(string col) {
     	getline(ss2, val, ':');
     	ret_val+=val+":";
     }
+
+    // hkeys col
 
     return ret_val;
 }

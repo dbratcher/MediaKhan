@@ -115,7 +115,7 @@ void unmap_path(string path, string fileid) {
       }
     }
   }
-  cout << "finished map_path" << endl << endl;
+  cout << "finished unmap_path" << endl << endl;
 }
 
 void unmounting(string mnt_dir) {
@@ -215,30 +215,6 @@ void calc_time_stop(int *calls, double *avg) {
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
 }
 
-vector<string> split(string str, string delim) {
-  int start=0, end;
-  vector<string> vec;
-  while((end = str.find(delim, start)) != string::npos) {
-    if(str.substr(start, end-start).length()>0) {
-      vec.push_back(str.substr(start, end-start));
-    }
-    start = end+delim.length();
-  }
-  if(str.substr(start).length()>0) {
-    vec.push_back(str.substr(start));
-  }
-  return vec;
-}
-
-string join(vector<string> these, string delim) {
-  string ret = "";
-  for(int i=0; i<these.size(); i++) {
-    ret+=delim;
-    ret+=these[i];
-  }
-  return ret;
-}
-
 bool find(string str, vector<string> arr) {
   for(int i=0; i<arr.size(); i++) {
     if(str == arr[i]) return true;
@@ -325,9 +301,7 @@ string resolve_hashtags(string path) {
     }
   }
   string ret = join(pieces, "/");
-  if(ret.length()>0) {
-    ret = ret.substr(1); 
-  }
+  cout << "hashtag " << path << " resolved to " << ret << endl;
   return ret;
 }
 
@@ -1038,7 +1012,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   
   process_file(server, fileid);
 
-  map_path(path, fileid);
+  map_path(resolve_hashtags(path), fileid);
 
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;

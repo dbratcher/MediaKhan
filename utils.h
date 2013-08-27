@@ -20,7 +20,8 @@ char* append_path(const char * newp);
 int count_string(string tobesplit);
 string intersect(string files1, string files2);
 int get_file_size(string file_name);
-
+vector<string> split(string str, string delim);
+string join(vector<string> these, string delim);
 
 
 #ifdef APPLE

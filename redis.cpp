@@ -1,4 +1,5 @@
 #include "redis.h"
+#include "utils.h"
 
 redisContext *c;
 redisReply *reply=NULL;
@@ -16,6 +17,25 @@ bool redis_init() {
   return 1;
 }
 
+string de_dup(string val) {
+  cout << "dedup " << val << " into ";
+  vector<string> vals = split(val, ":");
+  vector<string> uniques;
+  for(int i=0; i<vals.size(); i++) {
+    cout << "looking at " << vals[i] << endl;
+    string ret = join(uniques,":");
+    size_t found = ret.find(vals[i]);
+    if(found==string::npos) {
+      cout << "unique" << endl;
+      if(vals[i]!="") {
+        uniques.push_back(vals[i]);
+      }
+    }
+  } 
+  string new_ret = join(uniques, ":");
+  cout << new_ret << endl;
+  return new_ret;  
+}
 
 string redis_getval(string file_id, string col) {
   reply = (redisReply *)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
@@ -31,7 +51,7 @@ string redis_getval(string file_id, string col) {
 
 string redis_getkey_cols(string col) {
   reply = (redisReply *)redisCommand(c,"hkeys %s",col.c_str());
-  cout << "fetching col " << col << endl;
+  //cout << "fetching col " << col << endl;
   string output = "null";
 
   if(reply->elements!=0) {
@@ -42,7 +62,7 @@ string redis_getkey_cols(string col) {
   } else if(reply->len!=0) {
     output = reply->str;
   }
-  cout << "returned " << output << endl;
+  //cout << "returned " << output << endl;
   return output;
 
 }
@@ -52,7 +72,7 @@ string redis_setval(string file_id, string col, string val) {
   // generate file_id if needed
   if(file_id.compare("null")==0) {
     string file_id=redis_getval("redis_last_id","val");
-    cout << "got file id " << file_id << endl;	
+    //cout << "got file id " << file_id << endl;	
     if(file_id.compare("null")==0) {
       file_id="1";
     }
@@ -62,18 +82,18 @@ string redis_setval(string file_id, string col, string val) {
     redis_last_id++;//find non-local solution (other table?)
     ostringstream result;
     result<<redis_last_id;
-    cout << "removing " << file_id << endl;
+    //cout << "removing " << file_id << endl;
     redis_remove_val("redis_last_id","val",file_id);
     reply = (redisReply*)redisCommand(c,"hget redis_last_id val");
     if(reply->len!=0) {
       string rep_str = reply->str;
-      cout << "did it take?" << rep_str << endl;
+      //cout << "did it take?" << rep_str << endl;
     }
-    cout << "setting " << result.str() << endl;
+    //cout << "setting " << result.str() << endl;
     redis_setval("redis_last_id","val",result.str());
     file_id = result.str();
     redis_setval(file_id,col,val);
-    cout << "returning " << file_id;
+    //cout << "returning " << file_id;
     return file_id;
   }
 
@@ -85,7 +105,7 @@ string redis_setval(string file_id, string col, string val) {
     string rep_str = reply->str;
     output = rep_str + ":" + output;
   }
-    
+  output = de_dup(output); 
   reply = (redisReply*)redisCommand(c,"hset %s %s %s",file_id.c_str(),col.c_str(),output.c_str());
 
   //handle col key
@@ -97,6 +117,7 @@ string redis_setval(string file_id, string col, string val) {
     output = rep_str + ":" + output;
   }
     
+  output = de_dup(output); 
   reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(),output.c_str());
   return file_id;
 }
@@ -104,16 +125,16 @@ string redis_setval(string file_id, string col, string val) {
 
 
 void redis_remove_val(string fileid, string col, string val){
-  cout << "in remove val" << endl;
-  cout << "updating fileid" << endl;
+  //cout << "in remove val" << endl;
+  //cout << "updating fileid" << endl;
   reply = (redisReply*)redisCommand(c,"hget %s %s",fileid.c_str(),col.c_str());
   if(reply->len != 0 ) {
     string source = reply->str;
-    cout << "got " << source << endl;
+    //cout << "got " << source << endl;
     size_t found = source.find(val);
     if(found != string::npos) {
       source.erase(found, val.length());
-      cout << "after erase " << source << endl;
+      //cout << "after erase " << source << endl;
     }
     if(source.length()>0) {
       redisCommand(c,"hset %s %s %s",fileid.c_str(),col.c_str(),source.c_str());
@@ -123,13 +144,13 @@ void redis_remove_val(string fileid, string col, string val){
   }
   
   //remove from col entry
-  cout << "updating col entry" << endl;
+  //cout << "updating col entry" << endl;
   string col_entry = redis_getval(col, val);
-  cout << "got " << col_entry << endl;
+  //cout << "got " << col_entry << endl;
   size_t found = col_entry.find(fileid);
   if(found != string::npos) {
     col_entry.erase(found, fileid.length());
-    cout << "after erase " << col_entry << endl;
+    //cout << "after erase " << col_entry << endl;
   }
   reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(), col_entry.c_str());
 }

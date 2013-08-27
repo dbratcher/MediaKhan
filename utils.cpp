@@ -22,6 +22,32 @@ int get_file_size(string file_name){
   return st.st_size;
 }
 
+vector<string> split(string str, string delim) {
+  int start=0, end; 
+  vector<string> vec; 
+  while((end = str.find(delim, start)) != string::npos) {
+    if(str.substr(start, end-start).length()>0) {
+      vec.push_back(str.substr(start, end-start));
+    }    
+    start = end+delim.length();
+  }
+  if(str.substr(start).length()>0) {
+    vec.push_back(str.substr(start));
+  }
+  return vec; 
+}
+
+string join(vector<string> these, string delim) {
+  string ret = "";
+  for(int i=0; i<these.size(); i++) {
+    if(i>0) {
+      ret+=delim;
+    }
+    ret+=these[i];
+  }
+  return ret; 
+}
+
 
 string intersect(string files1, string files2){
   string ret="";

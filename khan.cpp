@@ -76,6 +76,47 @@ void process_file(string server, string fileid) {
   }
 }
 
+void map_path(string path, string fileid) {
+  cout << "in map_path" << endl;
+  cout << "path: " << path << " fileid: " << fileid << endl;
+  string token = "";
+  string attr = "";
+  stringstream ss2(path.c_str());
+  while(getline(ss2, token, '/')) {
+    cout << "got token " << token << endl;
+    if(strcmp(token.c_str(),"null")!=0) {
+      if(attr.length()>0) {
+        cout << "mapping " << attr << " to " << token << endl;
+        database_setval(fileid, attr, token);
+        attr = "";
+      } else {
+        attr = token;
+      }
+    }
+  }
+  cout << "finished map_path" << endl << endl;
+}
+
+void unmap_path(string path, string fileid) {
+  cout << "in unmap_path" << endl;
+  cout << "path: " << path << " fileid: " << fileid << endl;
+  string token = "";
+  string attr = "";
+  stringstream ss2(path.c_str());
+  while(getline(ss2, token, '/')) {
+    cout << "got token " << token << endl;
+    if(strcmp(token.c_str(),"null")!=0) {
+      if(attr.length()>0) {
+        cout << "removing map " << attr << " to " << token << endl;
+        database_remove_val(fileid, attr, token);
+        attr = "";
+      } else {
+        attr = token;
+      }
+    }
+  }
+  cout << "finished map_path" << endl << endl;
+}
 
 void unmounting(string mnt_dir) {
   log_msg("in umounting");
@@ -789,9 +830,14 @@ static int xmp_rename(const char *from, const char *to) {
   calc_time_start(&rename_calls);
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
-  string fileid = database_getval("name", from);
-  database_setval(fileid,"name",dst);
+  string fileid = database_getval("name", src);
+  cout << "rename " << fileid << endl;
   database_remove_val(fileid,"name",src);
+  cout << "from " << src << endl;
+  database_setval(fileid,"name",dst);
+  cout << "to " << dst << endl;
+  map_path(resolve_hashtags(to), fileid);
+  unmap_path(resolve_hashtags(from), fileid);
   calc_time_stop(&rename_calls, &rename_avg_time);
   return 0;
 }
@@ -971,7 +1017,6 @@ int khan_flush (const char * path, struct fuse_file_info * info ) {
   string fileid=database_getval("name",filename);
   string server=database_getval(fileid,"server");
   process_file(server, fileid);
-
   return 0;
 }
 
@@ -982,97 +1027,18 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   clock_gettime(CLOCK_REALTIME,&start);
   create_calls++;
 
-  log_msg("in khan_create");
-  int retstat = 0;
-  int fd=0;
-
   string fileid=database_getval("name",basename(strdup(path)));
-
-  //if file name is in system dont create, just update metadata
-  if(strcmp(fileid.c_str(),"null")!=0){
-    cout << "FILE ALREADY EXISTS!"<<endl;
-  } else {
-    //get from fileid
+  if(strcmp(fileid.c_str(),"null")==0){
     fileid=database_setval("null","name",basename(strdup(path)));
-    cout << "creating internal file(manipulating attrs):"<<fileid<<endl;
+    database_setval(fileid, "server", servers.at(0));
+    string ext = strrchr(basename(strdup(path)),'.')+1;
+    database_setval(fileid, "ext", ext);
   }
+  string server = database_getval(fileid, "server");
+  
+  process_file(server, fileid);
 
-
-  string spath=path;
-  string mytype=spath.substr(1,spath.find("/",1)-1);
-  string dtype=database_getval(mytype,"attrs");
-  database_setval(fileid,"ext",mytype);
-  if(strcmp(dtype.c_str(),"null")!=0){
-    //get all attrs, set in database
-    database_setval(fileid,"server",servers.at(0));
-    string attrs=database_getval(mytype,"attrs");
-    string token="";
-    stringstream ss2(attrs.c_str());
-    while(getline(ss2,token,':')){
-      if(strcmp(token.c_str(),"null")!=0){
-        cout << "=============== looking at attr =   " << token <<endl;
-        string cmd=database_getval(token+"gen","command");
-        string msg2=(cmd+" "+servers.at(0)+"/"+basename(strdup(path))).c_str();
-        cout << "=============== issuing command =   " << msg2 <<endl;
-        FILE* stream=popen(msg2.c_str(),"r");
-        if(fgets(msg,200,stream)!=0){
-          cout << "=============== attr value =   " << msg <<endl;
-          database_setval(fileid,token,msg);
-        }
-        pclose(stream);
-      }
-    }
-  } else {
-    //create filetype
-
-    //add line to vold as file type
-    database_setval("allfiles","types",mytype);
-    database_setval(mytype,"attrs","all_"+mytype+"s");
-    string asetval=database_setval("all_"+mytype+"sgen","command","basename");
-  }
-
-  //decompose path
-  string type, attr, val;
-  stringstream ss(path);
-  void* tint=getline(ss,type,'/');
-  tint=getline(ss,type,'/');
-  if(tint){
-    void* aint=getline(ss,attr,'/');
-    void* vint=getline(ss,val,'/');
-
-    //for each attr/val pair
-    while(aint && vint) {
-      //if attr is not there
-      if(database_getval(type,"attrs").find(attr)==string::npos){
-        //add attr to type
-        database_setval(type,"attrs",attr);
-      }
-
-      //database-set fileid attr val
-      database_setval(fileid,attr,val);
-      aint=getline(ss,attr,'/');
-      vint=getline(ss,val,'/');
-
-    }
-  }
-
-  //if to dir is in all dirs, remove it
-  string dirs=database_getval("alldirs","paths");
-  stringstream dd(dirs);
-  string sto=path;
-  string tok;
-  while(getline(dd,tok,':')){
-    cout<<"5comparing sto:"<<sto<<" to tok:"<<tok<<endl;
-    if(sto.find(tok)!=string::npos){
-      database_remove_val("alldirs","paths",tok);
-    }
-  }
-
-  //open file handle to create on file system
-  path=append_path2(basename(strdup(path)));
-  fd = open(path,fi->flags, mode);
-  close(fd);
-
+  map_path(path, fileid);
 
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;

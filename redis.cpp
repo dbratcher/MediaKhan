@@ -105,6 +105,7 @@ string redis_setval(string file_id, string col, string val) {
 
 void redis_remove_val(string fileid, string col, string val){
   cout << "in remove val" << endl;
+  cout << "updating fileid" << endl;
   reply = (redisReply*)redisCommand(c,"hget %s %s",fileid.c_str(),col.c_str());
   if(reply->len != 0 ) {
     string source = reply->str;
@@ -122,7 +123,15 @@ void redis_remove_val(string fileid, string col, string val){
   }
   
   //remove from col entry
-  reply = (redisReply *)redisCommand(c,"hdel %s %s",col.c_str(),val.c_str());
+  cout << "updating col entry" << endl;
+  string col_entry = redis_getval(col, val);
+  cout << "got " << col_entry << endl;
+  size_t found = col_entry.find(fileid);
+  if(found != string::npos) {
+    col_entry.erase(found, fileid.length());
+    cout << "after erase " << col_entry << endl;
+  }
+  reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(), col_entry.c_str());
 }
 
 

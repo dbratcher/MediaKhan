@@ -1174,6 +1174,17 @@ int main(int argc, char *argv[])
   khan_ops.fsetattr_x     = xmp_fsetattr_x;
 #endif
 
+  Py_SetProgramName(argv[0]);  /* optional but recommended */
+  Py_Initialize();
+  PyObject *sys = PyImport_ImportModule("sys");
+  PyObject *path = PyObject_GetAttrString(sys, "path");
+  PyList_Append(path, PyString_FromString("."));
+  PyObject *cloud_interface = PyImport_ImportModule("cloud.interface");
+  PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
+  PyObject* myResult = PyObject_CallObject(myFunction, NULL);
+  int n = PyList_Size(myResult);
+  cout << "Loaded " << n << " songs from google music." << endl;
+  Py_Finalize();
 
   int retval=0;
   struct khan_param param = { 0, 0, NULL, 0 };

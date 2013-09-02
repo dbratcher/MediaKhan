@@ -27,6 +27,13 @@
 #include <time.h>
 #include <unistd.h>
 #include <vector>
+
+#ifdef APPLE
+  #include "Python/Python.h"
+#else
+  #include "Python.h"
+#endif
+
 #include "log.h"
 #include "utils.h"
 #include "localizations.h"

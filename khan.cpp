@@ -19,6 +19,9 @@ string this_server;
 string this_server_id;
 
 void process_filetypes(string server) {
+  if(server == "cloud") {
+    return;
+  }
   string line;
   ifstream filetypes_file((server+"/filetypes.txt").c_str());
   getline(filetypes_file, line);
@@ -176,20 +179,73 @@ int initializing_khan(char * mnt_dir) {
   string types=database_getval("allfiles","types");
   cout << "================= types to look for ="<<types<<endl;
   for(int i=0; i<servers.size(); i++) {
-    glob_t files;
-    glob((servers.at(i)+"/*.*").c_str(),0,NULL,&files);
-    for(int j=0; j<files.gl_pathc; j++) {//for each file
-      string file = files.gl_pathv[j];
-      string ext = strrchr(file.c_str(),'.')+1;
-      string filename=strrchr(file.c_str(),'/')+1;
-      string fileid = database_setval("null","name",filename);
-      database_setval(fileid,"ext",ext);
-      database_setval(fileid,"server",servers.at(i));
-      database_setval(fileid,"location",server_ids.at(i));
-      for(int k=0; k<server_ids.size(); k++) {
-        database_setval(fileid, server_ids.at(k), "0");
+    if(servers.at(i) == "cloud") {
+      string module = server_ids.at(i);
+      module = "cloud." + module;
+      PyObject *cloud_interface = PyImport_ImportModule(module.c_str());
+      PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
+      PyObject* myResult = PyObject_CallObject(myFunction, NULL);
+      int n = PyList_Size(myResult);
+      cout << "Processing " << n << " songs from " << module << "." << endl << flush;
+      for(int j = 0; j<n; j++) {
+        PyObject* title = PyList_GetItem(myResult, j);
+        if(PyString_Check(title)!=0) {
+          continue;
+        }
+        char* temp = PyString_AsString(title);
+        string filename = "";
+        if(temp) {
+          filename = temp;
+        } else {
+          continue;
+        }
+        cout << "Checking " << filename << " ... " << endl << flush;
+        string fileid = database_setval("null","name",filename);
+        database_setval(fileid,"ext","mp3");
+        database_setval(fileid,"server",servers.at(i));
+        database_setval(fileid,"location",server_ids.at(i));
+        string attrs=database_getval("mp3","attrs");
+        string token="";
+        stringstream ss2(attrs.c_str());
+        PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_metadata");
+        while(getline(ss2,token,':')){
+          if(strcmp(token.c_str(),"null")!=0){
+            cout << "========= looking at attr =   " << token << endl << flush;
+            PyObject* arglist = PyTuple_New(2);
+            PyTuple_SetItem(arglist, 0, PyString_FromString(filename.c_str()));
+            PyTuple_SetItem(arglist, 1, PyString_FromString(token.c_str()));
+            PyObject* myResult = PyObject_CallObject(myFunction, arglist);
+            //cout << myResult << endl << flush;
+            if(myResult==NULL) {
+              PyErr_PrintEx(0);
+              continue;
+            }
+            string msg = PyString_AsString(myResult);
+            Py_DECREF(arglist);
+            Py_DECREF(myResult);
+            cout << "========= got val =   " << msg << endl << flush;
+            if(msg!="na") {
+              database_setval(fileid,token,msg);
+            }
+          }
+        }
+      } 
+    } else {
+      glob_t files;
+      glob((servers.at(i)+"/*.*").c_str(),0,NULL,&files);
+      for(int j=0; j<files.gl_pathc; j++) {//for each file
+        string file = files.gl_pathv[j];
+        string ext = strrchr(file.c_str(),'.')+1;
+        string filename=strrchr(file.c_str(),'/')+1;
+        string fileid = database_setval("null","name",filename);
+        database_setval(fileid,"ext",ext);
+        database_setval(fileid,"server",servers.at(i));
+        database_setval(fileid,"location",server_ids.at(i));
+        for(int k=0; k<server_ids.size(); k++) {
+          database_setval(fileid, server_ids.at(k), "0");
+        }
+        process_file(servers.at(i), fileid);
       }
-      process_file(servers.at(i), fileid);
     }
   }
   clock_gettime(CLOCK_REALTIME,&stop);
@@ -1179,13 +1235,7 @@ int main(int argc, char *argv[])
   PyObject *sys = PyImport_ImportModule("sys");
   PyObject *path = PyObject_GetAttrString(sys, "path");
   PyList_Append(path, PyString_FromString("."));
-  PyObject *cloud_interface = PyImport_ImportModule("cloud.interface");
-  PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
-  PyObject* myResult = PyObject_CallObject(myFunction, NULL);
-  int n = PyList_Size(myResult);
-  cout << "Loaded " << n << " songs from google music." << endl;
-  Py_Finalize();
-
+  
   int retval=0;
   struct khan_param param = { 0, 0, NULL, 0 };
   if((argc<2)||(argc>4)) {

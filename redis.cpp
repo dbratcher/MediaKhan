@@ -18,22 +18,22 @@ bool redis_init() {
 }
 
 string de_dup(string val) {
-  cout << "dedup " << val << " into ";
+  // cout << "dedup " << val << " into ";
   vector<string> vals = split(val, ":");
   vector<string> uniques;
   for(int i=0; i<vals.size(); i++) {
-    cout << "looking at " << vals[i] << endl;
+    // cout << "looking at " << vals[i] << endl;
     string ret = join(uniques,":");
     size_t found = ret.find(vals[i]);
     if(found==string::npos) {
-      cout << "unique" << endl;
+      // cout << "unique" << endl;
       if(vals[i]!="") {
         uniques.push_back(vals[i]);
       }
     }
   } 
   string new_ret = join(uniques, ":");
-  cout << new_ret << endl;
+  // cout << new_ret << endl;
   return new_ret;  
 }
 

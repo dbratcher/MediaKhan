@@ -22,3 +22,12 @@ def get_metadata(title, attr):
         print "not valid = ", res
         res = "na"
       return res
+
+def get_song(title, path):
+  an_id = 'null'
+  for song in songs:
+    if song['title'] == title:
+      an_id = song['id']
+  filename, audio = mm.download_song(an_id)
+  with open(path, 'wb') as f:
+    f.write(audio)

@@ -17,6 +17,7 @@ vector<string> servers;
 vector<string> server_ids;
 string this_server;
 string this_server_id;
+PyObject* cloud_interface;
 
 void process_filetypes(string server) {
   if(server == "cloud") {
@@ -180,13 +181,9 @@ int initializing_khan(char * mnt_dir) {
   cout << "================= types to look for ="<<types<<endl;
   for(int i=0; i<servers.size(); i++) {
     if(servers.at(i) == "cloud") {
-      string module = server_ids.at(i);
-      module = "cloud." + module;
-      PyObject *cloud_interface = PyImport_ImportModule(module.c_str());
       PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
       PyObject* myResult = PyObject_CallObject(myFunction, NULL);
       int n = PyList_Size(myResult);
-      cout << "Processing " << n << " songs from " << module << "." << endl << flush;
       for(int j = 0; j<n; j++) {
         PyObject* title = PyList_GetItem(myResult, j);
         if(PyString_Check(title)!=0) {
@@ -507,15 +504,36 @@ static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off
 }
 
 int khan_open(const char *path, struct fuse_file_info *fi) {
-  log_msg("in khan_open");
-  //todo:update usage count
   int retstat = 0;
   int fd;
-  path=append_path2(basename(strdup(path)));
-
-  sprintf(msg,"In khan_open path : %s\n",path);
-  log_msg(msg);
-  fd = open(path, fi->flags);
+  path = basename(strdup(path));
+  cout << "in khan_open with file " << path << endl << flush;
+  // get file id
+  string fileid = database_getval("name", path);
+  // get server 
+  string server = database_getval(fileid, "server");
+  cout << fileid << " " << server << endl << flush;
+  if(server == "cloud") {
+    cout << "looking at cloud" << endl << flush; 
+    string long_path = this_server + "/" + path;
+    cout << "downloading to "<< long_path << endl << flush;
+    string module = "cloud.google_music";
+    PyObject* arglist = PyTuple_New(2);
+    PyTuple_SetItem(arglist, 0, PyString_FromString(path));
+    PyTuple_SetItem(arglist, 1, PyString_FromString(long_path.c_str()));
+    PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_song");
+    PyObject* myResult = PyObject_CallObject(myFunction, arglist);
+    if(myResult==NULL) {
+      PyErr_PrintEx(0);
+    }
+    database_remove_val(fileid,"server","cloud");
+    database_remove_val(fileid,"location","google_music");
+    database_setval(fileid,"server",this_server);
+    database_setval(fileid,"location",this_server_id);
+    fd = open(long_path.c_str(), fi->flags);
+  } else {
+    fd = open(path, fi->flags);
+  }
   fi->fh = fd;
   return 0;
 }
@@ -1261,6 +1279,11 @@ int main(int argc, char *argv[])
   fscanf(stores, "%s\n", buffer);
   this_server_id = buffer;
   while(fscanf(stores, "%s %s\n", buffer, buffer2)!=EOF) {
+    if(strcmp(buffer,"cloud")==0) {
+      string module = buffer2;
+      module = "cloud." + module;
+      cloud_interface = PyImport_ImportModule(module.c_str());
+    }
     servers.push_back(buffer);
     server_ids.push_back(buffer2);
     if(this_server_id == buffer2) {

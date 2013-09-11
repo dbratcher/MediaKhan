@@ -71,7 +71,7 @@ void process_file(string server, string fileid) {
     if(strcmp(token.c_str(),"null")!=0){
       cout << "========= looking at attr =   " << token <<endl;
       string cmd=database_getval(token+"gen","command");
-      string msg2=(cmd+" "+file).c_str();
+      string msg2=(cmd+" \""+file+"\"").c_str();
       cout << "========= issuing command =   " << msg2 <<endl;
       FILE* stream=popen(msg2.c_str(),"r");
       if(fgets(msg,200,stream)!=0){
@@ -187,10 +187,16 @@ int initializing_khan(char * mnt_dir) {
       PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
       PyObject* myResult = PyObject_CallObject(myFunction, NULL);
       int n = PyList_Size(myResult);
+      cout << "SIZE = " << n << endl << flush;
       for(int j = 0; j<n; j++) {
         PyObject* title = PyList_GetItem(myResult, j);
         if(PyString_Check(title)!=0) {
-          continue;
+          //if not string force string rep
+          title = PyObject_Repr(title);
+          if(!title) {
+            //worse case skip
+            continue;
+          }
         }
         char* temp = PyString_AsString(title);
         string filename = "";
@@ -201,10 +207,11 @@ int initializing_khan(char * mnt_dir) {
         }
         cout << "Checking " << filename << " ... " << endl << flush;
         string fileid = database_setval("null","name",filename);
-        database_setval(fileid,"ext","mp3");
+        string ext = strrchr(filename.c_str(),'.')+1;
+        database_setval(fileid,"ext",ext);
         database_setval(fileid,"server",servers.at(i));
         database_setval(fileid,"location",server_ids.at(i));
-        string attrs=database_getval("mp3","attrs");
+        string attrs=database_getval(ext,"attrs");
         string token="";
         stringstream ss2(attrs.c_str());
         PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_metadata");

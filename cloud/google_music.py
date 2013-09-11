@@ -31,3 +31,6 @@ def get_song(title, path):
   filename, audio = mm.download_song(an_id)
   with open(path, 'wb') as f:
     f.write(audio)
+
+def upload_song(path):
+  mm.upload(path)

@@ -22,6 +22,32 @@ string this_server;
 string this_server_id;
 PyObject* cloud_interface;
 
+void cloud_upload(string path) {
+  cout << " Uploading song " << path << endl;
+  PyObject* arglist = PyTuple_New(2);
+  PyTuple_SetItem(arglist, 1, PyString_FromString(path.c_str()));
+  PyObject* myFunction =PyObject_GetAttrString(cloud_interface,(char*)"upload_song");
+  PyObject* myResult = PyObject_CallObject(myFunction, arglist);
+  if(myResult==NULL) {
+    PyErr_PrintEx(0);
+  }
+}
+
+void cloud_download(string song, string path) {
+  cout << " Downloading song " << song << " to " << path << endl;
+  PyObject* arglist = PyTuple_New(2);
+  PyTuple_SetItem(arglist, 0, PyString_FromString(song.c_str()));
+  PyTuple_SetItem(arglist, 1, PyString_FromString(path.c_str()));
+  PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_song");
+  PyObject* myResult = PyObject_CallObject(myFunction, arglist);
+  if(myResult==NULL) {
+    PyErr_PrintEx(0);
+  }
+  FILE* stream=popen(("id3convert -1 "+path).c_str(),"r");
+  pclose(stream);
+}
+
+
 void process_filetypes(string server) {
   if(server == "cloud") {
     return;
@@ -84,45 +110,57 @@ void process_file(string server, string fileid) {
 }
 
 void map_path(string path, string fileid) {
-  cout << "in map_path" << endl;
-  cout << "path: " << path << " fileid: " << fileid << endl;
+  //cout << "in map_path" << endl;
+  //cout << "path: " << path << " fileid: " << fileid << endl;
   string token = "";
   string attr = "";
   stringstream ss2(path.c_str());
   while(getline(ss2, token, '/')) {
-    cout << "got token " << token << endl;
+    //cout << "got token " << token << endl;
     if(strcmp(token.c_str(),"null")!=0) {
       if(attr.length()>0) {
-        cout << "mapping " << attr << " to " << token << endl;
+        //cout << "mapping " << attr << " to " << token << endl;
         database_setval(fileid, attr, token);
+        if(attr=="location") {
+          int pos=find(server_ids.begin(),server_ids.end(),token)-server_ids.begin();
+          if( pos < server_ids.size() ) {
+            database_setval(fileid, "server", servers.at(pos));
+          }
+        }
         attr = "";
       } else {
         attr = token;
       }
     }
   }
-  cout << "finished map_path" << endl << endl;
+  //cout << "finished map_path" << endl << endl;
 }
 
 void unmap_path(string path, string fileid) {
-  cout << "in unmap_path" << endl;
-  cout << "path: " << path << " fileid: " << fileid << endl;
+  //cout << "in unmap_path" << endl;
+  //cout << "path: " << path << " fileid: " << fileid << endl;
   string token = "";
   string attr = "";
   stringstream ss2(path.c_str());
   while(getline(ss2, token, '/')) {
-    cout << "got token " << token << endl;
+    //cout << "got token " << token << endl;
     if(strcmp(token.c_str(),"null")!=0) {
       if(attr.length()>0) {
-        cout << "removing map " << attr << " to " << token << endl;
+        //cout << "removing map " << attr << " to " << token << endl;
         database_remove_val(fileid, attr, token);
+        if(attr=="location") {
+          int pos=find(server_ids.begin(),server_ids.end(),token)-server_ids.begin();
+          if( pos < server_ids.size() ) {
+            database_remove_val(fileid, "server", servers.at(pos));
+          }
+        }
         attr = "";
       } else {
         attr = token;
       }
     }
   }
-  cout << "finished unmap_path" << endl << endl;
+  //cout << "finished unmap_path" << endl << endl;
 }
 
 void unmounting(string mnt_dir) {
@@ -186,25 +224,20 @@ int initializing_khan(char * mnt_dir) {
     if(servers.at(i) == "cloud") {
       PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_all_titles");
       PyObject* myResult = PyObject_CallObject(myFunction, NULL);
+      if(myResult==NULL) {
+        PyErr_PrintEx(0);
+        continue;
+      }
       int n = PyList_Size(myResult);
       cout << "SIZE = " << n << endl << flush;
       for(int j = 0; j<n; j++) {
         PyObject* title = PyList_GetItem(myResult, j);
-        if(PyString_Check(title)!=0) {
-          //if not string force string rep
-          title = PyObject_Repr(title);
-          if(!title) {
-            //worse case skip
-            continue;
-          }
-        }
         char* temp = PyString_AsString(title);
-        string filename = "";
-        if(temp) {
-          filename = temp;
-        } else {
+        if(temp==NULL) {
+          PyErr_PrintEx(0);
           continue;
         }
+        string filename = temp;
         cout << "Checking " << filename << " ... " << endl << flush;
         string fileid = database_setval("null","name",filename);
         string ext = strrchr(filename.c_str(),'.')+1;
@@ -227,12 +260,17 @@ int initializing_khan(char * mnt_dir) {
               PyErr_PrintEx(0);
               continue;
             }
-            string msg = PyString_AsString(myResult);
+            char* msg = PyString_AsString(myResult);
+            if(!msg) {
+              PyErr_PrintEx(0);
+              continue;
+            }
+            string val = msg;
             Py_DECREF(arglist);
             Py_DECREF(myResult);
-            cout << "========= got val =   " << msg << endl << flush;
-            if(msg!="na") {
-              database_setval(fileid,token,msg);
+            cout << "========= got val =   " << val << endl << flush;
+            if(val!="na") {
+              database_setval(fileid,token,val);
             }
           }
         }
@@ -525,21 +563,10 @@ int khan_open(const char *path, struct fuse_file_info *fi) {
   cout << fileid << " " << server << endl << flush;
   if(server == "cloud") {
     cout << "looking at cloud" << endl << flush; 
-    string long_path = this_server + "/" + path;
+    string long_path = "/tmp/";
+    long_path += path;
     cout << "downloading to "<< long_path << endl << flush;
-    string module = "cloud.google_music";
-    PyObject* arglist = PyTuple_New(2);
-    PyTuple_SetItem(arglist, 0, PyString_FromString(path));
-    PyTuple_SetItem(arglist, 1, PyString_FromString(long_path.c_str()));
-    PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_song");
-    PyObject* myResult = PyObject_CallObject(myFunction, arglist);
-    if(myResult==NULL) {
-      PyErr_PrintEx(0);
-    }
-    database_remove_val(fileid,"server","cloud");
-    database_remove_val(fileid,"location","google_music");
-    database_setval(fileid,"server",this_server);
-    database_setval(fileid,"location",this_server_id);
+    cloud_download(path, long_path);
     fd = open(long_path.c_str(), fi->flags);
   } else {
     fd = open(path, fi->flags);
@@ -724,7 +751,6 @@ static int xmp_mkdir(const char *path, mode_t mode) {
         string command = "mv " + from + " " + to;
         FILE* stream=popen(command.c_str(),"r");
         pclose(stream);
-        //rename(from.c_str(), to.c_str());
       }
     }
     clock_gettime(CLOCK_REALTIME,&mkdir_stop);
@@ -894,8 +920,25 @@ static int xmp_rename(const char *from, const char *to) {
   cout << "from " << src << endl;
   database_setval(fileid,"name",dst);
   cout << "to " << dst << endl;
+  string orig_path = append_path2(src);
+  string orig_loc = database_getval(fileid,"location");
   map_path(resolve_selectors(to), fileid);
   unmap_path(resolve_selectors(from), fileid);
+  string new_path = append_path2(dst);
+  string new_loc = database_getval(fileid,"location");
+  if(new_loc!=orig_loc) {
+    if(new_loc=="google_music") {
+      //upload
+      cloud_upload(orig_path);
+    } else if(orig_loc=="google_music") {
+      //download
+      cloud_download(src, new_path);
+    } else {
+      //file system rename
+      rename(orig_path.c_str(), new_path.c_str());
+    }
+  }
+  cout << "Exiting Rename Function" << endl << endl << endl << endl;
   calc_time_stop(&rename_calls, &rename_avg_time);
   return 0;
 }
@@ -972,37 +1015,24 @@ static int xmp_utimens(const char *path, const struct timespec ts[2]) {
 
 static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
   calc_time_start(&read_calls);
-       log_msg("in xmp_read");
+  int res = 0;
+  path=append_path2(basename(strdup(path)));
+  cout<<"Converted Path: "<<path<<endl<<endl<<endl<<endl;
 
-  //if just created
-    //set created and read
-  //if just created, read and wrote
-    //do nothing and quit
+  FILE *thefile = fopen(path, "r");
+  if (thefile != NULL){
+    fseek(thefile, offset, SEEK_SET);
+    res = fread(buf, 1, size, thefile);
+    cout << "READ THIS MANY"<<endl<<res<<endl<<endl<<endl<<endl<<endl;
 
-   int fd,j=0;
-      int res;
-      int khan_write =0;
-      char newpath[100];
-      sprintf(msg,"KHAN_READ >> PATH : %s\n",path); log_msg(msg);
-    path=append_path2(basename(strdup(path)));
-  cout<<"PATH NAME!!!!!"<<path<<endl<<endl<<endl;
-          (void) fi;
-          FILE *thefile = fopen(path, "r");
-
-      if (thefile == NULL){
-    calc_time_stop(&read_calls, &read_avg_time);
-    return -errno;
+    if (res == -1)
+      res = -errno;
+    fclose(thefile);
+  } else {
+    res = -errno;
   }
-  fseek(thefile, offset, SEEK_SET);
-      res = fread(buf, 1, size, thefile);
-
-  cout << "READ THIS MANY !!!!!!!!!!!!!!!!!!!!!!!!!!"<<endl<<res<<"!!!!!!!!!!!!!!!!!!!!!!!!!!!"<<endl;
-
-      if (res == -1)
-  res = -errno;
-        close(fd);
   calc_time_stop(&read_calls, &read_avg_time);
-      return res;
+  return res;
 }
 
 static int xmp_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {

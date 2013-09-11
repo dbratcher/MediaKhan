@@ -120,6 +120,9 @@ char* append_path2(string newp) {
   //get server name
   string server=database_getval(fid,"server");
   cout<<"got server:"<<server<<endl;
+  if(server=="cloud") {
+    server = "/tmp";
+  }
   //append and return c_str
   return strdup((server+"/"+newp).c_str());
 }

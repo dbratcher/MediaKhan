@@ -37,6 +37,13 @@ string de_dup(string val) {
   return new_ret;  
 }
 
+string cleanup_str(string str) {
+  if(str.at(0)==':') {
+    str = str.substr(1);
+  }
+  return str;
+}
+
 string redis_getval(string file_id, string col) {
   reply = (redisReply *)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
 
@@ -45,8 +52,7 @@ string redis_getval(string file_id, string col) {
   if(reply->len!=0) {
     output = reply->str;
   }
-
-  return output;
+  return cleanup_str(output);
 }
 
 string redis_getkey_cols(string col) {
@@ -63,8 +69,7 @@ string redis_getkey_cols(string col) {
     output = reply->str;
   }
   //cout << "returned " << output << endl;
-  return output;
-
+  return cleanup_str(output);
 }
 
 

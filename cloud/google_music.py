@@ -1,5 +1,6 @@
 from gmusicapi import Musicmanager
 from re import match
+from subprocess import call
 
 mm = Musicmanager()
 mm.login()
@@ -12,13 +13,14 @@ def convert(input):
   elif isinstance(input, list):
     return [convert(element) for element in input]
   elif isinstance(input, unicode):
-    return input.encode('utf-8')
+    return input.encode('ascii','ignore')
   else:
     return input
 
+songs = mm.get_all_songs()
+songs = convert(songs)
+
 def get_all_titles():
-  songs = mm.get_all_songs()
-  songs = convert(songs)
   titles = [song['title'] + ".mp3" for song in songs]
   print len(titles), " loaded from google music\n"
   titles = [str(title) for title in titles]
@@ -27,11 +29,8 @@ def get_all_titles():
 def get_metadata(title, attr):
   title = title[:-4]
   for song in songs:
-    if song['title'] == title:
-      if title == "Winter":
-        print song
-      res =  song.get(attr, "na")
-      res = str(res)
+    if song['title'] == title.encode('ascii','ignore'):
+      res = song.get(attr, "na")
       return res
 
 def get_song(title, path):

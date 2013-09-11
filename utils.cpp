@@ -114,12 +114,12 @@ char* append_path(const char * newp) {
 
 char* append_path2(string newp) {
   //get file from database
-  cout<<"in append_path2"<<endl;
+  //cout<<"in append_path2"<<endl;
   string fid=database_getval("name",newp);
-  cout<<"got fid:"<<fid<<endl;
+  //cout<<"got fid:"<<fid<<endl;
   //get server name
   string server=database_getval(fid,"server");
-  cout<<"got server:"<<server<<endl;
+  //cout<<"got server:"<<server<<endl;
   vector<string> places = split(server, ":");
   int i=0;
   server = "";

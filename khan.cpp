@@ -23,7 +23,7 @@ string this_server_id;
 PyObject* cloud_interface;
 
 void cloud_upload(string path) {
-  FILE* stream=popen(("id3convert -1 -2 "+path).c_str(),"r");
+  FILE* stream=popen(("id3convert -1 -2 '"+path+"'").c_str(),"r");
   pclose(stream);
   cout << " Uploading song " << path << endl;
   PyObject* arglist = PyTuple_New(1);
@@ -45,7 +45,7 @@ void cloud_download(string song, string path) {
   if(myResult==NULL) {
     PyErr_PrintEx(0);
   }
-  FILE* stream=popen(("id3convert -1 "+path).c_str(),"r");
+  FILE* stream=popen(("id3convert -1 '"+path+"'").c_str(),"r");
   pclose(stream);
 }
 
@@ -416,7 +416,7 @@ string resolve_selectors(string path) {
     }
   }
   string ret = join(pieces, "/");
-  cout << "selectortag " << path << " resolved to " << ret << endl;
+  cout << "selector path " << path << " resolved to " << ret << endl;
   return ret;
 }
 
@@ -581,11 +581,7 @@ int khan_open(const char *path, struct fuse_file_info *fi) {
     long_path += path;
     cout << "downloading to "<< long_path << endl << flush;
     cloud_download(path, long_path);
-    fd = open(long_path.c_str(), fi->flags);
-  } else {
-    fd = open(path, fi->flags);
   }
-  fi->fh = fd;
   return 0;
 }
 

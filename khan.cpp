@@ -241,40 +241,46 @@ int initializing_khan(char * mnt_dir) {
         }
         string filename = temp;
         cout << "Checking " << filename << " ... " << endl << flush;
-        string fileid = database_setval("null","name",filename);
-        string ext = strrchr(filename.c_str(),'.')+1;
-        database_setval(fileid,"ext",ext);
-        database_setval(fileid,"server",servers.at(i));
-        database_setval(fileid,"location",server_ids.at(i));
-        string attrs=database_getval(ext,"attrs");
-        string token="";
-        stringstream ss2(attrs.c_str());
-        PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_metadata");
-        while(getline(ss2,token,':')){
-          if(strcmp(token.c_str(),"null")!=0){
-            cout << "========= looking at attr =   " << token << endl << flush;
-            PyObject* arglist = PyTuple_New(2);
-            PyTuple_SetItem(arglist, 0, PyString_FromString(filename.c_str()));
-            PyTuple_SetItem(arglist, 1, PyString_FromString(token.c_str()));
-            PyObject* myResult = PyObject_CallObject(myFunction, arglist);
-            //cout << myResult << endl << flush;
-            if(myResult==NULL) {
-              PyErr_PrintEx(0);
-              continue;
-            }
-            char* msg = PyString_AsString(myResult);
-            if(!msg) {
-              PyErr_PrintEx(0);
-              continue;
-            }
-            string val = msg;
-            Py_DECREF(arglist);
-            Py_DECREF(myResult);
-            cout << "========= got val =   " << val << endl << flush;
-            if(val!="na") {
-              database_setval(fileid,token,val);
+        if(database_getval("name",filename)=="null") {
+          string fileid = database_setval("null","name",filename);
+          string ext = strrchr(filename.c_str(),'.')+1;
+          database_setval(fileid,"ext",ext);
+          database_setval(fileid,"server",servers.at(i));
+          database_setval(fileid,"location",server_ids.at(i));
+          string attrs=database_getval(ext,"attrs");
+          string token="";
+          stringstream ss2(attrs.c_str());
+          PyObject* myFunction = PyObject_GetAttrString(cloud_interface,(char*)"get_metadata");
+          while(getline(ss2,token,':')){
+            if(strcmp(token.c_str(),"null")!=0){
+              cout << "========= looking at attr =   " << token << endl << flush;
+              PyObject* arglist = PyTuple_New(2);
+              PyTuple_SetItem(arglist, 0, PyString_FromString(filename.c_str()));
+              PyTuple_SetItem(arglist, 1, PyString_FromString(token.c_str()));
+              PyObject* myResult = PyObject_CallObject(myFunction, arglist);
+              //cout << myResult << endl << flush;
+              if(myResult==NULL) {
+                PyErr_PrintEx(0);
+                continue;
+              }
+              char* msg = PyString_AsString(myResult);
+              if(!msg) {
+                PyErr_PrintEx(0);
+                continue;
+              }
+              string val = msg;
+              Py_DECREF(arglist);
+              Py_DECREF(myResult);
+              cout << "========= got val =   " << val << endl << flush;
+              if(val!="na") {
+                database_setval(fileid,token,val);
+              }
             }
           }
+        } else {
+          string fileid = database_getval("name", filename);
+          database_setval(fileid,"server",servers.at(i));
+          database_setval(fileid,"location",server_ids.at(i));
         }
       } 
     } else {
@@ -284,14 +290,20 @@ int initializing_khan(char * mnt_dir) {
         string file = files.gl_pathv[j];
         string ext = strrchr(file.c_str(),'.')+1;
         string filename=strrchr(file.c_str(),'/')+1;
-        string fileid = database_setval("null","name",filename);
-        database_setval(fileid,"ext",ext);
-        database_setval(fileid,"server",servers.at(i));
-        database_setval(fileid,"location",server_ids.at(i));
-        for(int k=0; k<server_ids.size(); k++) {
-          database_setval(fileid, server_ids.at(k), "0");
+        if(database_getval("name", filename) == "null") {
+          string fileid = database_setval("null","name",filename);
+          database_setval(fileid,"ext",ext);
+          database_setval(fileid,"server",servers.at(i));
+          database_setval(fileid,"location",server_ids.at(i));
+          for(int k=0; k<server_ids.size(); k++) {
+            database_setval(fileid, server_ids.at(k), "0");
+          }
+          process_file(servers.at(i), fileid);
+        } else {
+          string fileid = database_getval("name",filename);
+          database_setval(fileid,"server",servers.at(i));
+          database_setval(fileid,"location",server_ids.at(i));
         }
-        process_file(servers.at(i), fileid);
       }
     }
   }
@@ -917,11 +929,8 @@ static int xmp_rename(const char *from, const char *to) {
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
   string fileid = database_getval("name", src);
-  cout << "rename " << fileid << endl;
   database_remove_val(fileid,"name",src);
-  cout << "from " << src << endl;
   database_setval(fileid,"name",dst);
-  cout << "to " << dst << endl;
   string orig_path = append_path2(src);
   string orig_loc = database_getval(fileid,"location");
   map_path(resolve_selectors(to), fileid);

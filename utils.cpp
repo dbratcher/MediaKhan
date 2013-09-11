@@ -120,8 +120,16 @@ char* append_path2(string newp) {
   //get server name
   string server=database_getval(fid,"server");
   cout<<"got server:"<<server<<endl;
-  if(server=="cloud") {
-    server = "/tmp";
+  vector<string> places = split(server, ":");
+  int i=0;
+  server = "";
+  for(i=0; i<places.size(); i++) {
+    //prefer local to cloud
+    if(places[i]=="cloud" && server=="") {
+      server = "/tmp";
+    } else {
+      server = places[i];
+    }
   }
   //append and return c_str
   return strdup((server+"/"+newp).c_str());

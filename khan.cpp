@@ -23,9 +23,11 @@ string this_server_id;
 PyObject* cloud_interface;
 
 void cloud_upload(string path) {
+  FILE* stream=popen(("id3convert -1 -2 "+path).c_str(),"r");
+  pclose(stream);
   cout << " Uploading song " << path << endl;
-  PyObject* arglist = PyTuple_New(2);
-  PyTuple_SetItem(arglist, 1, PyString_FromString(path.c_str()));
+  PyObject* arglist = PyTuple_New(1);
+  PyTuple_SetItem(arglist, 0, PyString_FromString(path.c_str()));
   PyObject* myFunction =PyObject_GetAttrString(cloud_interface,(char*)"upload_song");
   PyObject* myResult = PyObject_CallObject(myFunction, arglist);
   if(myResult==NULL) {

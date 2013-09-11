@@ -1,9 +1,8 @@
 #include "redis.h"
 #include "utils.h"
 
-redisContext *c;
-redisReply *reply=NULL;
-
+redisContext* c;
+redisReply* reply;
 
 bool redis_init() {
   struct timeval timeout = { 3600, 0};
@@ -45,30 +44,35 @@ string cleanup_str(string str) {
 }
 
 string redis_getval(string file_id, string col) {
-  reply = (redisReply *)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
+  reply = (redisReply*)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
 
   string output = "null";
     
   if(reply->len!=0) {
     output = reply->str;
   }
+
+  freeReplyObject(reply);
   return cleanup_str(output);
 }
 
 string redis_getkey_cols(string col) {
-  reply = (redisReply *)redisCommand(c,"hkeys %s",col.c_str());
-  //cout << "fetching col " << col << endl;
+  cout << "fetching col " << col << endl;
+  reply = (redisReply*)redisCommand(c,"hkeys %s",col.c_str());
   string output = "null";
 
   if(reply->elements!=0) {
+    cout << "nonzero" << endl << flush;
     output = "";
     for(int i=0; i<reply->elements; i++) {
-      output = output + reply->element[i]->str + ":";
+      if(reply->element[i]) {
+        cout << i << endl << flush;
+        output = output + reply->element[i]->str + ":";
+      }
     }
-  } else if(reply->len!=0) {
-    output = reply->str;
   }
-  //cout << "returned " << output << endl;
+  freeReplyObject(reply);
+  cout << "returned " << output << endl;
   return cleanup_str(output);
 }
 
@@ -94,6 +98,7 @@ string redis_setval(string file_id, string col, string val) {
       string rep_str = reply->str;
       //cout << "did it take?" << rep_str << endl;
     }
+    freeReplyObject(reply);
     //cout << "setting " << result.str() << endl;
     redis_setval("redis_last_id","val",result.str());
     file_id = result.str();
@@ -103,15 +108,17 @@ string redis_setval(string file_id, string col, string val) {
   }
 
   // handle file_id key
-  reply = (redisReply*)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
+  reply = (redisReply*)(redisReply*)redisCommand(c,"hget %s %s",file_id.c_str(),col.c_str());
   string output = val;
     
   if(reply->len != 0) {
     string rep_str = reply->str;
     output = rep_str + ":" + output;
   }
+  freeReplyObject(reply);
   output = de_dup(output); 
   reply = (redisReply*)redisCommand(c,"hset %s %s %s",file_id.c_str(),col.c_str(),output.c_str());
+  freeReplyObject(reply);
 
   //handle col key
   reply = (redisReply*)redisCommand(c,"hget %s %s",col.c_str(),val.c_str());
@@ -121,9 +128,11 @@ string redis_setval(string file_id, string col, string val) {
     string rep_str = reply->str;
     output = rep_str + ":" + output;
   }
+  freeReplyObject(reply);
     
   output = de_dup(output); 
-  reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(),output.c_str());
+  reply = (redisReply*)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(),output.c_str());
+  freeReplyObject(reply);
   return file_id;
 }
 
@@ -135,6 +144,8 @@ void redis_remove_val(string fileid, string col, string val){
   reply = (redisReply*)redisCommand(c,"hget %s %s",fileid.c_str(),col.c_str());
   if(reply->len != 0 ) {
     string source = reply->str;
+    freeReplyObject(reply);
+
     //cout << "got " << source << endl;
     size_t found = source.find(val);
     if(found != string::npos) {
@@ -142,10 +153,14 @@ void redis_remove_val(string fileid, string col, string val){
       //cout << "after erase " << source << endl;
     }
     if(source.length()>0) {
-      redisCommand(c,"hset %s %s %s",fileid.c_str(),col.c_str(),source.c_str());
+      reply = (redisReply*)redisCommand(c,"hset %s %s %s",fileid.c_str(),col.c_str(),source.c_str());
+      freeReplyObject(reply);
     } else { 
-      redisCommand(c,"hdel %s %s",fileid.c_str(),col.c_str());
+      reply = (redisReply*)redisCommand(c,"hdel %s %s",fileid.c_str(),col.c_str());
+      freeReplyObject(reply);
     }
+  } else {
+    freeReplyObject(reply);
   }
   
   //remove from col entry
@@ -157,7 +172,8 @@ void redis_remove_val(string fileid, string col, string val){
     col_entry.erase(found, fileid.length());
     //cout << "after erase " << col_entry << endl;
   }
-  reply = (redisReply *)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(), col_entry.c_str());
+  reply = (redisReply*)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(), col_entry.c_str());
+  freeReplyObject(reply);
 }
 
 

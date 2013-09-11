@@ -387,26 +387,38 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 }
 
 string resolve_selectors(string path) {
+  cout << "starting split" << endl << flush;
   vector<string> pieces = split(path, "/");
+  cout << "starting process" << endl << flush;
   for(int i=0; i<pieces.size(); i++) {
+    cout << "looking at " << pieces[i] << endl << flush;
     if(pieces[i].at(0)==SELECTOR_C) {
+      cout << "is a selector" << endl << flush;
       vector<string> selectores = split(pieces[i], SELECTOR_S);
       pieces[i]="";
+      cout << selectores.size() << " selectors to be exact" << endl << flush;
       for(int j=0; j<selectores.size(); j++) {
+        cout << "checking " << selectores[j] << endl << flush;
         bool matched = false;
         string content = database_getvals("attrs");
+        cout << "content " << content << endl << flush;
         vector<string> attr_vec = split(content, ":");
+        cout << "vs " << attr_vec.size() << " attrs" << endl << flush;
         //for all attrs
         for(int k=0; k<attr_vec.size(); k++) {
+          cout << "on " << attr_vec[k] << endl << flush;
           string vals = database_getvals(attr_vec[k]);
+          cout << "with " << vals << endl << flush;
           //see if piece is in vals
           if(content_has(vals, selectores[j], false)) {
             //if so piece now equals attr/val
+            cout << "resolved piece " << attr_vec[k] << "/" << selectores[j] << endl << flush;
             if(pieces[i].length()>0) {
               pieces[i]+="/";
             }
             matched = true;
             pieces[i]+=attr_vec[k]+"/"+selectores[j];
+            break;
           }
         }
         if(!matched) {
@@ -429,6 +441,7 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
   void* mint=getline(path, more, '/');
   bool loop = true;
   while(loop) {
+    cout << "top of loop" << endl << flush;
     loop = false;
     if(aint) {
       string content = database_getvals("attrs");
@@ -481,12 +494,14 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
 }
 
 static int khan_getattr(const char *c_path, struct stat *stbuf) {
-  calc_time_start(&getattr_calls);
+  cout << "started get attr" << endl << flush;
   string pre_processed = c_path+1;
+  cout << "starting to resolve selectors" << endl << flush;
   string after = resolve_selectors(pre_processed);
   stringstream path(after);
+  cout << "working to pop buffer" << endl << flush;
   int ret = populate_getattr_buffer(stbuf, path);
-  calc_time_stop(&getattr_calls, &getattr_avg_time);
+  cout << "ended get attr" << endl << flush;
   return ret;
 }
 

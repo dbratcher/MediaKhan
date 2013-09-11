@@ -9,6 +9,9 @@
 #define REDIS 2
 #define DATABASE REDIS
 
+#define SELECTOR_C '@'
+#define SELECTOR_S "@"
+
 #define log stderr
 
 //mkdir stats prints stats to stats file and console:
@@ -324,13 +327,13 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
   stbuf->st_mtime=current_time;
 }
 
-string resolve_hashtags(string path) {
+string resolve_selectors(string path) {
   vector<string> pieces = split(path, "/");
   for(int i=0; i<pieces.size(); i++) {
-    if(pieces[i].at(0)=='#') {
-      vector<string> hashes = split(pieces[i], "#");
+    if(pieces[i].at(0)==SELECTOR_C) {
+      vector<string> selectores = split(pieces[i], SELECTOR_S);
       pieces[i]="";
-      for(int j=0; j<hashes.size(); j++) {
+      for(int j=0; j<selectores.size(); j++) {
         bool matched = false;
         string content = database_getvals("attrs");
         vector<string> attr_vec = split(content, ":");
@@ -338,23 +341,23 @@ string resolve_hashtags(string path) {
         for(int k=0; k<attr_vec.size(); k++) {
           string vals = database_getvals(attr_vec[k]);
           //see if piece is in vals
-          if(content_has(vals, hashes[j], false)) {
+          if(content_has(vals, selectores[j], false)) {
             //if so piece now equals attr/val
             if(pieces[i].length()>0) {
               pieces[i]+="/";
             }
             matched = true;
-            pieces[i]+=attr_vec[k]+"/"+hashes[j];
+            pieces[i]+=attr_vec[k]+"/"+selectores[j];
           }
         }
         if(!matched) {
-          pieces[i]+="tags/"+hashes[j];
+          pieces[i]+="tags/"+selectores[j];
         }
       }
     }
   }
   string ret = join(pieces, "/");
-  cout << "hashtag " << path << " resolved to " << ret << endl;
+  cout << "selectortag " << path << " resolved to " << ret << endl;
   return ret;
 }
 
@@ -421,7 +424,7 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
 static int khan_getattr(const char *c_path, struct stat *stbuf) {
   calc_time_start(&getattr_calls);
   string pre_processed = c_path+1;
-  string after = resolve_hashtags(pre_processed);
+  string after = resolve_selectors(pre_processed);
   stringstream path(after);
   int ret = populate_getattr_buffer(stbuf, path);
   calc_time_stop(&getattr_calls, &getattr_avg_time);
@@ -496,7 +499,7 @@ static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
   string pre_processed = c_path+1;
-  string after = resolve_hashtags(pre_processed);
+  string after = resolve_selectors(pre_processed);
   stringstream path(after);
   populate_readdir_buffer(buf, filler, path);
   calc_time_stop(&readdir_calls, &readdir_avg_time);
@@ -884,8 +887,8 @@ static int xmp_rename(const char *from, const char *to) {
   cout << "from " << src << endl;
   database_setval(fileid,"name",dst);
   cout << "to " << dst << endl;
-  map_path(resolve_hashtags(to), fileid);
-  unmap_path(resolve_hashtags(from), fileid);
+  map_path(resolve_selectors(to), fileid);
+  unmap_path(resolve_selectors(from), fileid);
   calc_time_stop(&rename_calls, &rename_avg_time);
   return 0;
 }
@@ -1086,7 +1089,7 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   
   process_file(server, fileid);
 
-  map_path(resolve_hashtags(path), fileid);
+  map_path(resolve_selectors(path), fileid);
 
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;

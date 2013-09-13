@@ -104,6 +104,10 @@ void process_file(string server, string fileid) {
     if(strcmp(token.c_str(),"null")!=0){
       cout << "========= looking at attr =   " << token <<endl;
       string cmd=database_getval(token+"gen","command");
+      if(cmd=="null") {
+        cout << "command is null, skipping" << endl;
+        continue;
+      }
       string msg2=(cmd+" \""+file+"\"").c_str();
       cout << "========= issuing command =   " << msg2 <<endl;
       FILE* stream=popen(msg2.c_str(),"r");

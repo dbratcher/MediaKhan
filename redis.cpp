@@ -57,22 +57,22 @@ string redis_getval(string file_id, string col) {
 }
 
 string redis_getkey_cols(string col) {
-  cout << "fetching col " << col << endl;
+  //cout << "fetching col " << col << endl;
   reply = (redisReply*)redisCommand(c,"hkeys %s",col.c_str());
   string output = "null";
 
   if(reply->elements!=0) {
-    cout << "nonzero" << endl << flush;
+    //cout << "nonzero" << endl << flush;
     output = "";
     for(int i=0; i<reply->elements; i++) {
       if(reply->element[i]) {
-        cout << i << endl << flush;
+        //cout << i << endl << flush;
         output = output + reply->element[i]->str + ":";
       }
     }
   }
   freeReplyObject(reply);
-  cout << "returned " << output << endl;
+  //cout << "returned " << output << endl;
   return cleanup_str(output);
 }
 

@@ -14,14 +14,19 @@
 
 #define log stderr
 
+timeval apple_start;
+timeval apple_stop;
+
+
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
+string dir_cpy_times="./dir_cpy_tims.txt";
 vector<string> servers;
 vector<string> server_ids;
 string this_server;
 string this_server_id;
 PyObject* cloud_interface;
-
+ofstream times;
 void cloud_upload(string path) {
   FILE* stream=popen(("id3convert -1 -2 '"+path+"'").c_str(),"r");
   pclose(stream);
@@ -323,11 +328,12 @@ void calc_time_start(int *calls) {
   (*calls)++;
 }
 
-void calc_time_stop(int *calls, double *avg) {
+double calc_time_stop(int *calls, double *avg) {
   clock_gettime(CLOCK_REALTIME,&stop);
   time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; 
   tot_time += time_spent;
   *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
+  return time_spent;
 }
 
 bool find(string str, vector<string> arr) {
@@ -387,32 +393,31 @@ void file_pop_stbuf(struct stat* stbuf, string filename) {
 }
 
 string resolve_selectors(string path) {
-  cout << "starting split" << endl << flush;
+  //cout << "starting split" << endl << flush;
   vector<string> pieces = split(path, "/");
-  cout << "starting process" << endl << flush;
+  //cout << "starting process" << endl << flush;
   for(int i=0; i<pieces.size(); i++) {
-    cout << "looking at " << pieces[i] << endl << flush;
+    //cout << "looking at " << pieces[i] << endl << flush;
     if(pieces[i].at(0)==SELECTOR_C) {
-      cout << "is a selector" << endl << flush;
+      //cout << "is a selector" << endl << flush;
       vector<string> selectores = split(pieces[i], SELECTOR_S);
       pieces[i]="";
-      cout << selectores.size() << " selectors to be exact" << endl << flush;
+      //cout << selectores.size() << " selectors to be exact" << endl << flush;
       for(int j=0; j<selectores.size(); j++) {
-        cout << "checking " << selectores[j] << endl << flush;
+        //cout << "checking " << selectores[j] << endl << flush;
         bool matched = false;
         string content = database_getvals("attrs");
-        cout << "content " << content << endl << flush;
+        //cout << "content " << content << endl << flush;
         vector<string> attr_vec = split(content, ":");
-        cout << "vs " << attr_vec.size() << " attrs" << endl << flush;
+        //cout << "vs " << attr_vec.size() << " attrs" << endl << flush;
         //for all attrs
         for(int k=0; k<attr_vec.size(); k++) {
-          cout << "on " << attr_vec[k] << endl << flush;
+          //cout << "on " << attr_vec[k] << endl << flush;
           string vals = database_getvals(attr_vec[k]);
-          cout << "with " << vals << endl << flush;
+          //cout << "with " << vals << endl << flush;
           //see if piece is in vals
           if(content_has(vals, selectores[j], false)) {
             //if so piece now equals attr/val
-            cout << "resolved piece " << attr_vec[k] << "/" << selectores[j] << endl << flush;
             if(pieces[i].length()>0) {
               pieces[i]+="/";
             }
@@ -936,6 +941,7 @@ static int xmp_symlink(const char *from, const char *to) {
 }
 
 static int xmp_rename(const char *from, const char *to) {
+  gettimeofday(&apple_start, NULL);
   calc_time_start(&rename_calls);
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
@@ -962,6 +968,11 @@ static int xmp_rename(const char *from, const char *to) {
   }
   cout << "Exiting Rename Function" << endl << endl << endl << endl;
   calc_time_stop(&rename_calls, &rename_avg_time);
+  gettimeofday(&apple_stop, NULL);
+  cout << apple_start.tv_sec << " " << apple_start.tv_usec << endl << flush;
+  cout << apple_stop.tv_sec << " " << apple_stop.tv_usec << endl << flush;
+  double time = (apple_stop.tv_sec - apple_start.tv_sec) + (double(apple_stop.tv_usec - apple_start.tv_usec) / 1000000);
+  times << fixed << time << endl << flush;
   return 0;
 }
 
@@ -1367,6 +1378,8 @@ int main(int argc, char *argv[])
     log_msg("Could not initialize khan..Aborting..!\n");
     return -1;
   }
+  times.open(dir_cpy_times.c_str(), ofstream::out);
+  times.precision(15);
   log_msg("initialized....");
   retval=fuse_main(args.argc,args.argv, &khan_ops, khan_data);
   log_msg("Done with fuse_main...\n");

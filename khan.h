@@ -14,6 +14,8 @@
 #include <iterator>
 #include <libgen.h>
 #include <list>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
 #include <map>
 #include <memory>
 #include <signal.h>

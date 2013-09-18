@@ -31,6 +31,10 @@ khan
 
 # Machine Dependent
 .DS_Store
+
+# Experimental
 khan_root
 khan_root2
 khan_root3
+test
+dir_cpy_tims.txt

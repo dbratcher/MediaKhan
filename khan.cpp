@@ -55,14 +55,14 @@ void cloud_download(string song, string path) {
 }
 
 
-void process_filetypes(string server) {
+void process_transducers(string server) {
   if(server == "cloud") {
     return;
   }
   string line;
-  ifstream filetypes_file((server+"/filetypes.txt").c_str());
-  getline(filetypes_file, line);
-  while(filetypes_file.good()){
+  ifstream transducers_file((server+"/transducers.txt").c_str());
+  getline(transducers_file, line);
+  while(transducers_file.good()){
     cout << "=============== got type =   " << line <<endl;
     //add line to vold as file type
     database_setval("allfiles","types",line);
@@ -72,7 +72,7 @@ void process_filetypes(string server) {
     database_setval("namegen","command","basename");
     database_setval(line,"attrs","ext");
     string ext=line;
-    getline(filetypes_file,line);
+    getline(transducers_file,line);
     const char *firstchar=line.c_str();
     while(firstchar[0]=='-') {
       //add line to vold under filetype as vold
@@ -87,7 +87,7 @@ void process_filetypes(string server) {
       attr=trim(attr);
       database_setval(ext,"attrs",attr);
       database_setval(attr+"gen","command",command);
-      getline(filetypes_file,line);
+      getline(transducers_file,line);
       firstchar=line.c_str();
     }
   }
@@ -225,7 +225,7 @@ int initializing_khan(char * mnt_dir) {
 
   //load metadata associatons
   for(int i=0; i<servers.size(); i++){
-    process_filetypes(servers.at(i));
+    process_transducers(servers.at(i));
   }
 
   //load metadata for each file on each server

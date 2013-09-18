@@ -30,6 +30,7 @@ khan
 *.app
 
 # Machine Dependent
+.DS_Store
 khan_root
 khan_root2
 khan_root3

@@ -22,13 +22,21 @@ A distributed fuse-based media filesystem.
     - Install Redis (http://redis.io/)
 - Install C Clients for Installed Databases:
     - Install Voldemort C Client (located in the voldemort package under clients)
-        - install libtool
-        - install libboost-all-dev
-        - install libboost-system-dev
-        - install libprotobuf-dev
-        - install libboost-doc
-        - install doxygen
-        - install automake	
+        - on ubuntu (sudo apt-get)
+            - install libtool
+            - install libboost-all-dev
+            - install libboost-system-dev
+            - install libprotobuf-dev
+            - install libboost-doc
+            - install doxygen
+            - install automake	
+        - on mac (sudo port)
+            - install libtool
+            - brew install protobuf (mac ports doesn't seem to work for this one)
+            - brew install boost
+            - install automake
+            - install doxygen
+            - install autoconf
         - run ./autogen.sh 
         - run ./configure
         - update utils/Makefile LIBS to include -lboost_thread-mt

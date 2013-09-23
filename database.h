@@ -14,11 +14,16 @@
 #include "voldemort.h"
 #endif
 
+#ifdef BDB_FOUND
+#include "bdb.h"
+#endif
+
 using namespace std;
 
 #define VOLDEMORT 1
 #define REDIS 2
-#define DATABASE REDIS
+#define BDB 3
+#define DATABASE BDB
 #define BILLION 1E9
 
 #ifdef APPLE
@@ -49,6 +54,8 @@ extern double rename_avg_time;
 extern double localize_time;
 extern int redis_calls;
 extern double redis_avg_time;
+extern int bdb_calls;
+extern double bdb_avg_time;
 
 bool init_database();
 string database_setval(string file_id, string col, string val);

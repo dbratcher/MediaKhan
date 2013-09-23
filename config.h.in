@@ -1,3 +1,4 @@
 #cmakedefine VOLDEMORT_FOUND
 #cmakedefine REDIS_FOUND
 #cmakedefine APPLE
+#cmakedefine BDB_FOUND

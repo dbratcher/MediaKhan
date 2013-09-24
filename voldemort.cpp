@@ -32,10 +32,6 @@ bool voldemort_init() {
 	voldemort_setval(key2,"col3","val6");
 	voldemort_setval(key2,"col4","val4");
 
-	voldemort_getkeys("col","val");
-	voldemort_getkeys("col3","val6");
-	voldemort_getkeys("col4","val4");
-
 	cout<<"keyvals for col3:"<<voldemort_getkey_cols("col3")<<endl;
 
 	voldemort_getval("0","col2");
@@ -46,38 +42,6 @@ bool voldemort_init() {
 }
 
 
-
-
-
-string voldemort_getkeys(string col, string val){
-	//log_msg("int getkeys");
-	string key_query=col;
-	cout <<"qeurying:"<<key_query<<"\n";
-	const VersionedValue* result = myclient->get(&key_query);
-	if(result) {
-		//log_msg("it got a result...");
-	} else {
-		//log_msg("it did not...");
-		return "null";
-	}
-	string output=*(result->getValue());
-	cout << output << endl;
-	string another="";
-	size_t exact=output.find("~"+val+":");
-	if (exact!=string::npos){
-		another=output.substr(exact);
-		another=another.substr(2+val.length());
-		size_t exact2=another.find("~");
-		if(exact2==string::npos){
-			exact2=another.find("}");
-		}
-		another=another.substr(0,exact2);
-		cout<<"another="<<another<<endl;
-	}
-	//log_msg("get1 success");
-	cout<<"voldemort key value: "<<  output <<"\n";
-	return another;//return key list of another
-}
 
 
 

@@ -54,7 +54,6 @@ string database_setval(string file_id, string col, string val){
     clock_gettime(CLOCK_REALTIME,&start);
     string retstring="fail";
     retstring=voldemort_setval(file_id,col,val);
-    retstring= voldemort_setval(file_id,col,val);
     clock_gettime(CLOCK_REALTIME,&stop);
     time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;
     vold_avg_time=(vold_avg_time*(vold_calls-1)+time_spent)/vold_calls;
@@ -88,7 +87,7 @@ string database_getval(string col, string val){
   val=trim(val);
   #ifdef VOLDEMORT_FOUND
   if(DATABASE==VOLDEMORT){
-    log_msg("using vold");
+    //log_msg("using vold");
     vold_calls++;
     clock_gettime(CLOCK_REALTIME,&start);
     string retstring=voldemort_getval(col,val);

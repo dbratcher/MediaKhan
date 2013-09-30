@@ -55,7 +55,7 @@ string voldemort_getval(string file_id, string col){
 		return "null";
 	}
 	string output=*(result2->getValue());
-	cout <<output <<"\n";
+	//cout <<output <<"\n";
 	size_t exact=output.find("~"+col+":");
 	string another="null";
 	if(exact!=string::npos){
@@ -66,7 +66,7 @@ string voldemort_getval(string file_id, string col){
 			exact2=another.find("}");
 		}
 		another=another.substr(0,exact2);
-		cout<<"another="<<another<<endl;
+		//cout<<"another="<<another<<endl;
 	}
 	//log_msg("get1 success");
 	return another;
@@ -76,30 +76,32 @@ string voldemort_getval(string file_id, string col){
 
 
 string voldemort_setval(string file_id, string col, string val){
-	cout<<"in vold_setval with file_id:"<<file_id<<" col:"<<col<<" val:"<<val<<endl;
+	//cout<<"in vold_setval with file_id:"<<file_id<<" col:"<<col<<" val:"<<val<<endl;
 	if(file_id.compare("null")==0){
 		string out=voldemort_getval("vold_last_id","val");
-		cout<< "OUT="<<out<<endl;
+		//cout<< "OUT="<<out<<endl;
 		if(out.compare("null")==0){
 			out="0";
 		}
-		cout<< "OUT="<<out<<endl;
+		//cout<< "OUT="<<out<<endl;
 		string file_id=out;
 		vold_last_id=0;
 		vold_last_id=atoi(out.c_str());
-		cout << "OLD LAST ID="<<vold_last_id<<endl;
+		//cout << "OLD LAST ID="<<vold_last_id<<endl;
 		vold_last_id++;//find non-local solution (other table?)
 		ostringstream result;
-		cout << "NEW LAST ID="<<vold_last_id<<endl;
+		//cout << "NEW LAST ID="<<vold_last_id<<endl;
 		result<<vold_last_id;
-		cout << "RESULT="<<result.str()<<endl;
+		//cout << "RESULT="<<result.str()<<endl;
 		voldemort_remove_val("vold_last_id","val",out);
 		voldemort_setval("vold_last_id","val",result.str());
-		voldemort_setval(file_id,col,val);
-		return file_id;
+		//cout << "running with fileid:" << file_id << endl; 
+                voldemort_setval(file_id,col,val);
+		//cout << "RETURNING FILE ID = " <<file_id << endl << endl;
+                return file_id;
 	}
 
-	cout<<"setting value for file_id:"<<file_id<<endl;
+	//cout<<"setting value for file_id:"<<file_id<<endl;
 
 	//handle file_id key
 	const VersionedValue* result3 = myclient->get(&file_id);
@@ -111,112 +113,112 @@ string voldemort_setval(string file_id, string col, string val){
 		output="";
 	}
 	string store=output;
-	cout<<"got "<<output<<endl;
+	//cout<<"got "<<output<<endl;
 	string rest;
 	if(store.find("~"+col+":")!=string::npos){//col already set
 		string setval=voldemort_getval(file_id,col);
 		int len=setval.length();
-		cout<<"col already set to "<<setval<<endl;
+		//cout<<"col already set to "<<setval<<endl;
 		if(setval.find(val)==string::npos){
 			setval+=":"+val;
 		}
 		store.replace(store.find("~"+col+":")+2+col.length(),len,setval);
 	} else {
-		cout<<"adding col - not already set"<<endl;
+		//cout<<"adding col - not already set"<<endl;
 		store+="~"+col+":"+val;
 	}
 	myclient->put(&file_id,&store);
-	cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
+	//cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
 
 
 	//handle col key
-	cout<<"qeury for:"<<col<<endl;
+	//cout<<"qeury for:"<<col<<endl;
 	const VersionedValue* result4 = myclient->get(&col);
 	output="";
 	if(result4){
 		output=*(result4->getValue());
 	}
 	store=output;
-	cout<<"returns:"<<store<<endl;
+	//cout<<"returns:"<<store<<endl;
 	rest="";
 	if(store.find("~"+val+":")!=string::npos){//col already set
 		//log_msg("handling col that already has val!");
-		cout<<"old_key:"<<store<<endl;
+		//cout<<"old_key:"<<store<<endl;
 		rest=store.substr(store.find("~"+val+":"));
 		rest=rest.substr(val.length()+2);
 		size_t exact2=rest.find("~");
 		if(exact2!=string::npos){
 			rest=rest.substr(0,exact2);
 		}
-		cout<<"original values of val:"<<rest<<endl;
+		//cout<<"original values of val:"<<rest<<endl;
 		size_t orig_length=rest.length();
 		if(rest.find(file_id)==string::npos){
 			rest+=":"+file_id;
 		}
-		cout<<"updated version:"<<rest<<endl;
+		//cout<<"updated version:"<<rest<<endl;
 		store=store.replace(store.find("~"+val+":")+2+val.length(),orig_length,rest);
-		cout<<"new key:"<<store<<endl;
+		//cout<<"new key:"<<store<<endl;
 	} else {
 		store+="~"+val+":"+file_id;
 	}
 	myclient->put(&col,&store);
-	cout<<"put the string "<<store<<" at the key "<<col<<endl;
+	//cout<<"put the string "<<store<<" at the key "<<col<<endl;
 	return file_id;
 }
 
 
 
 string voldemort_getkey_values(string col){
-	cout<<"qeury for:"<<col<<endl;
+	//cout<<"qeury for:"<<col<<endl;
 	const VersionedValue* result4 = myclient->get(&col);
 	string output="";
 	if(result4){
 		output=*(result4->getValue());
 	}
 	string ret_val="";
-	cout<<"found col with following:"<<output<<endl;
+	//cout<<"found col with following:"<<output<<endl;
 	stringstream ss(output);
 	string val;
 	while(getline(ss,val,'~')){
-		cout << "got val = " << val << endl;
+		//cout << "got val = " << val << endl;
 		stringstream ss2(val);
 		getline(ss2, val, ':');
 		while(getline(ss2, val, ':')){
 			ret_val+=val;
 		}
 	}
-	cout << "returning " << ret_val << endl;
+	//cout << "returning " << ret_val << endl;
 	return ret_val;
 }
 
 string voldemort_getkey_cols(string col){
-	cout<<"qeury for:"<<col<<endl;
+	//cout<<"qeury for:"<<col<<endl;
 	const VersionedValue* result4 = myclient->get(&col);
 	string output="";
 	if(result4){
 		output=*(result4->getValue());
 	}
 	string ret_val="";
-	cout<<"found col with following:"<<output<<endl;
+	//cout<<"found col with following:"<<output<<endl;
 	stringstream ss(output);
 	string val;
 	while(getline(ss,val,'~')){
-		cout << "got val = " << val << endl;
+		//cout << "got val = " << val << endl;
 		stringstream ss2(val);
 		getline(ss2, val, ':');
 		ret_val+=val+":";
 	}
-	cout << "returning " << ret_val << endl;
+	//cout << "returning " << ret_val << endl;
 	return ret_val;
 }
 
 
 void voldemort_remove_val(string fileid, string col, string val){
 	string replaced=voldemort_getval(fileid,col);
-	cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
-	cout << "replaced :"<<replaced<<endl;
+	//cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
+	//cout << "replaced :"<<replaced<<endl;
 	if(replaced.find(val)!=string::npos){
-		cout<<"its here"<<endl;
+		//cout<<"its here"<<endl;
 
 		//remove from file entry
 		replaced.replace(replaced.find(val),val.length()+1,"");
@@ -226,21 +228,21 @@ void voldemort_remove_val(string fileid, string col, string val){
 			replaced="~"+col+":"+replaced;
 		}
 		if((replaced.length()-1)>0){
-			cout<<replaced.length()<<endl;
+			//cout<<replaced.length()<<endl;
 			if(replaced.at(replaced.length()-1)==':'){
 				replaced.erase(replaced.length()-1);
 			}
 		}
-		cout<<"new replaced:"<<replaced<<endl;
+		//cout<<"new replaced:"<<replaced<<endl;
 		myclient->put(&fileid,&replaced);
 
 		//remove from col entry
 		const VersionedValue* result4 = myclient->get(&col);
 		string sout=*(result4->getValue());
-		cout <<"col side:"<<sout<<endl;
+		//cout <<"col side:"<<sout<<endl;
 		int len=sout.find("~"+val+":");
 		int len2=sout.find("~",len+1);
-		cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
+		//cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
 		if(len2>0){
 			sout.replace(len,len2-len,"");
 		} else if(len>0) {
@@ -248,11 +250,11 @@ void voldemort_remove_val(string fileid, string col, string val){
 		} else {
 			sout="";
 		}
-		cout <<"new col:"<<sout<<endl;
+		//cout <<"new col:"<<sout<<endl;
 		myclient->put(&col,&sout);
 		result4=myclient->get(&col);
 		string s2=*(result4->getValue());
-		cout << "did it take?:"<<s2<<endl;
+		//cout << "did it take?:"<<s2<<endl;
 	}
 }
 

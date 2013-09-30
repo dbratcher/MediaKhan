@@ -32,7 +32,7 @@ string get(string key) {
 }
 
 void print_db() {
-  cout << "Printing database..." << endl << flush;
+  //cout << "Printing database..." << endl << flush;
   DBC *cursorp; 
   int ret;
   /* Initialize cursor */ 
@@ -52,11 +52,11 @@ void print_db() {
   /* Close cursor before exit */
   if (cursorp != NULL) 
     cursorp->c_close(cursorp); 
-  cout << "...finished printing database" << endl << endl << endl << flush;
+  //cout << "...finished printing database" << endl << endl << endl << flush;
 }
 
 bool bdb_init() {
-  //cout << "enter init" << endl << flush;
+  ////cout << "enter init" << endl << flush;
   int ret = db_create(&dbp, NULL, 0);
   flags = DB_CREATE;
   ret = dbp->open(dbp,		/* DB structure pointer */ 
@@ -66,14 +66,14 @@ bool bdb_init() {
 			DB_HASH,	/* Database access method */ 
 			flags,		/* Open flags */ 
 			0);		
-  //cout << "exit init" << endl << flush;
+  ////cout << "exit init" << endl << flush;
   return true;
 }
 
 string bdb_getval(string file_id, string col) {
-  //cout << "enter getval" << endl << flush;
+  ////cout << "enter getval" << endl << flush;
   string output = get(file_id);
-  //cout <<output <<"\n";
+  ////cout <<output <<"\n";
   size_t exact=output.find("~"+col+":");
   string another="null";
   if(exact!=string::npos){
@@ -84,113 +84,113 @@ string bdb_getval(string file_id, string col) {
       exact2=another.find("}");
     }
     another=another.substr(0,exact2);
-    //cout<<"another="<<another<<endl;
+    ////cout<<"another="<<another<<endl;
   }
-  //cout << "exit getval" << endl << flush;
+  ////cout << "exit getval" << endl << flush;
   return another;
 }
 
 string bdb_getkey_cols(string col) {
-       cout<<"qeury for:"<<col<<endl;
+       //cout<<"qeury for:"<<col<<endl;
         string output = get(col);
         string ret_val="";
-        cout<<"found col with following:"<<output<<endl;
+        //cout<<"found col with following:"<<output<<endl;
         stringstream ss(output);
         string val;
         while(getline(ss,val,'~')){
-                cout << "got val = " << val << endl;
+                //cout << "got val = " << val << endl;
                 stringstream ss2(val);
                 getline(ss2, val, ':');
                 ret_val+=val+":";
         }   
-        cout << "returning " << ret_val << endl;
+        //cout << "returning " << ret_val << endl;
   return ret_val;
 }
 
 string bdb_setval(string file_id, string col, string val) { 
   if(file_id=="null") {
     string out=bdb_getval("bdb_last_id","val");
-    //cout<< "OUT="<<out<<endl;
+    ////cout<< "OUT="<<out<<endl;
     if(out.compare("null")==0){
       out="0";
     }
-    //cout<< "OUT="<<out<<endl;
+    ////cout<< "OUT="<<out<<endl;
     string file_id=out;
     int bdb_last_id=0;
     bdb_last_id=atoi(out.c_str());
-    //cout << "OLD LAST ID="<<bdb_last_id<<endl;
+    ////cout << "OLD LAST ID="<<bdb_last_id<<endl;
     bdb_last_id++;//find non-local solution (other table?)
     ostringstream result;
-    //cout << "NEW LAST ID="<<bdb_last_id<<endl;
+    ////cout << "NEW LAST ID="<<bdb_last_id<<endl;
     result<<bdb_last_id;
-    //cout << "RESULT="<<result.str()<<endl;
+    ////cout << "RESULT="<<result.str()<<endl;
     bdb_remove_val("bdb_last_id","val",out);
     bdb_setval("bdb_last_id","val",result.str());
     bdb_setval(file_id,col,val);
     return file_id;
   }
 
-        //cout<<"setting value for file_id:"<<file_id<<endl;
+        ////cout<<"setting value for file_id:"<<file_id<<endl;
 
         //handle file_id key
         string output = get(file_id);
         string store=output;
-        //cout<<"got "<<output<<endl;
+        ////cout<<"got "<<output<<endl;
         string rest;
         if(store.find("~"+col+":")!=string::npos){//col already set
                 string setval=bdb_getval(file_id,col);
                 int len=setval.length();
-                //cout<<"col already set to "<<setval<<endl;
+                ////cout<<"col already set to "<<setval<<endl;
                 if(setval.find(val)==string::npos){
                         setval+=":"+val;
                 }   
                 store.replace(store.find("~"+col+":")+2+col.length(),len,setval);
         } else {
-                //cout<<"adding col - not already set"<<endl;
+                ////cout<<"adding col - not already set"<<endl;
                 store+="~"+col+":"+val;
         }   
         put(file_id,store);
-        //cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
+        ////cout<<"put the string "<<store<<" at the key "<<file_id<<endl;
 
 
         //handle col key
-        //cout<<"qeury for:"<<col<<endl;
+        ////cout<<"qeury for:"<<col<<endl;
         output = get(col);
         store=output;
-        //cout<<"returns:"<<store<<endl;
+        ////cout<<"returns:"<<store<<endl;
         rest="";
         if(store.find("~"+val+":")!=string::npos){//col already set
                 //log_msg("handling col that already has val!");
-                //cout<<"old_key:"<<store<<endl;
+                ////cout<<"old_key:"<<store<<endl;
                 rest=store.substr(store.find("~"+val+":"));
                 rest=rest.substr(val.length()+2);
                 size_t exact2=rest.find("~");
                 if(exact2!=string::npos){
                         rest=rest.substr(0,exact2);
                 }   
-                //cout<<"original values of val:"<<rest<<endl;
+                ////cout<<"original values of val:"<<rest<<endl;
                 size_t orig_length=rest.length();
                 if(rest.find(file_id)==string::npos){
                         rest+=":"+file_id;
                 }   
-                //cout<<"updated version:"<<rest<<endl;
+                ////cout<<"updated version:"<<rest<<endl;
                 store=store.replace(store.find("~"+val+":")+2+val.length(),orig_length,rest);
-                //cout<<"new key:"<<store<<endl;
+                ////cout<<"new key:"<<store<<endl;
         } else {
                 store+="~"+val+":"+file_id;
        }
   put(col, store);
-  print_db();
-  //cout<<"put the string "<<store<<" at the key "<<col<<endl;
+  //print_db();
+  ////cout<<"put the string "<<store<<" at the key "<<col<<endl;
   return file_id;
 }
 
 void bdb_remove_val(string fileid, string col, string val){
         string replaced=bdb_getval(fileid,col);
-        cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
-        cout << "replaced :"<<replaced<<endl;
+        //cout << "file:"<<fileid<<" col:"<<col<<" val:"<<val<<endl;
+        //cout << "replaced :"<<replaced<<endl;
         if(replaced.find(val)!=string::npos){
-                cout<<"its here"<<endl;
+                //cout<<"its here"<<endl;
 
                 //remove from file entry
                 replaced.replace(replaced.find(val),val.length()+1,"");
@@ -200,20 +200,20 @@ void bdb_remove_val(string fileid, string col, string val){
                         replaced="~"+col+":"+replaced;
                 }   
                 if((replaced.length()-1)>0){
-                        cout<<replaced.length()<<endl;
+                        //cout<<replaced.length()<<endl;
                         if(replaced.at(replaced.length()-1)==':'){
                                 replaced.erase(replaced.length()-1);
                         }   
                 }   
-                cout<<"new replaced:"<<replaced<<endl;
+                //cout<<"new replaced:"<<replaced<<endl;
                 put(fileid,replaced);
 
                 //remove from col entry
                 string sout = get(col);
-                cout <<"col side:"<<sout<<endl;
+                //cout <<"col side:"<<sout<<endl;
                 int len=sout.find("~"+val+":");
                 int len2=sout.find("~",len+1);
-                cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
+                //cout <<"len1:"<<len<<" len2:"<<len2<<" len2-len1:"<<(len2-len)<<endl;
                 if(len2>0){
                         sout.replace(len,len2-len,"");
                 } else if(len>0) {
@@ -221,10 +221,10 @@ void bdb_remove_val(string fileid, string col, string val){
                 } else {
                         sout="";
                 }
-                cout <<"new col:"<<sout<<endl;
+                //cout <<"new col:"<<sout<<endl;
                 put(col,sout);
                 string s2 = get(col);
-                cout << "did it take?:" << s2 << endl;
+                //cout << "did it take?:" << s2 << endl;
   }
 }
 

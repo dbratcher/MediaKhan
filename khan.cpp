@@ -11,51 +11,20 @@
 
 #define log stderr
 
-#ifdef APPLE
-  uint64_t astart;
-  uint64_t aend;
-  uint64_t aelapsed;
-  uint64_t aelapsedNano;
-  static mach_timebase_info_data_t sTimebaseInfo;
-#endif
-
 
 
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
 string dir_cpy_times="./dir_cpy_tims.txt";
+string start_times_file_name = "./start_times.txt";
 vector<string> servers;
 vector<string> server_ids;
 string this_server;
 string this_server_id;
 PyObject* cloud_interface;
 ofstream times;
-
-void apple_start_time() {
-  #ifdef APPLE
-    astart = mach_absolute_time();
-  #endif 
-}
-
-double asecs = 0;
-
-double apple_end_time() {
-  #ifdef APPLE
-    aend = mach_absolute_time();
-    aelapsed = aend - astart;
-    if ( sTimebaseInfo.denom == 0 ) {
-      (void) mach_timebase_info(&sTimebaseInfo);
-    }
-    aelapsedNano = aelapsed * sTimebaseInfo.numer / sTimebaseInfo.denom;
-    asecs = aelapsedNano/BILLION;
-    tot_time+= asecs;
-    return asecs;
-  #else
-    return 0;
-  #endif
-}
-
+ofstream start_times;
 
 void cloud_upload(string path) {
   FILE* stream=popen(("id3convert -1 -2 '"+path+"'").c_str(),"r");
@@ -222,8 +191,6 @@ void unmounting(string mnt_dir) {
 int initializing_khan(char * mnt_dir) {
   //log_msg("In initialize\n");
   unmounting(mnt_dir);
-  clock_gettime(CLOCK_REALTIME,&start);
-  apple_start_time();
       //Opening root directory and creating if not present
   //cout<<"khan_root[0] is "<<servers.at(0)<<endl;
   if(NULL == opendir(servers.at(0).c_str()))  {
@@ -245,8 +212,6 @@ int initializing_khan(char * mnt_dir) {
   string output=database_getval("setup","value");
   if(output.compare("true")==0){
     log_msg("Database was previously initialized.");
-    clock_gettime(CLOCK_REALTIME,&stop);
-    apple_end_time();
     tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
     return 0; //setup has happened before
   }
@@ -348,9 +313,6 @@ int initializing_khan(char * mnt_dir) {
       }
     }
   }
-  clock_gettime(CLOCK_REALTIME,&stop);
-  apple_end_time();
-  tot_time+=(stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION;
   //log_msg("At the end of initialize\n");
   return 0;
 }
@@ -358,21 +320,6 @@ int initializing_khan(char * mnt_dir) {
 
 int khan_opendir(const char *c_path, struct fuse_file_info *fi) {
   return 0;
-}
-
-void calc_time_start(int *calls) {
-  clock_gettime(CLOCK_REALTIME,&start);
-  apple_start_time();
-  (*calls)++;
-}
-
-double calc_time_stop(int *calls, double *avg) {
-  clock_gettime(CLOCK_REALTIME,&stop);
-  apple_end_time();
-  time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; 
-  tot_time += time_spent;
-  *avg=((*avg)*((*calls)-1)+time_spent)/(*calls);
-  return time_spent;
 }
 
 bool find(string str, vector<string> arr) {
@@ -613,14 +560,12 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
 }
 
 static int xmp_readdir(const char *c_path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
-  calc_time_start(&readdir_calls);
   filler(buf, ".", NULL, 0);
   filler(buf, "..", NULL, 0);
   string pre_processed = c_path+1;
   string after = resolve_selectors(pre_processed);
   stringstream path(after);
   populate_readdir_buffer(buf, filler, path);
-  calc_time_stop(&readdir_calls, &readdir_avg_time);
   return 0;
 }
 
@@ -647,16 +592,13 @@ int khan_open(const char *path, struct fuse_file_info *fi) {
 
 int xmp_access(const char *path, int mask)
 {
-    calc_time_start(&access_calls);
     char *path_copy=strdup(path);
   if(strcmp(path,"/")==0) {
     //log_msg("at root");
-    calc_time_stop(&access_calls, &access_avg_time);
     return 0;
   }
 //  if(strcmp(path,"/")==0) {
         //log_msg("at root");
-        calc_time_stop(&access_calls, &access_avg_time);
         return 0;
 //  }
 
@@ -665,7 +607,6 @@ int xmp_access(const char *path, int mask)
   stringstream dd(dirs);
   while(getline(dd,temptok,':')){
     if(strcmp(temptok.c_str(),path)==0){
-      calc_time_stop(&access_calls, &access_avg_time);
       return 0;
     }
   }
@@ -721,10 +662,6 @@ int xmp_access(const char *path, int mask)
         if(reta && vint) {
           //cout << val << endl;
           if(strcmp(attr.c_str(),("all_"+type+"s").c_str())==0) {
-            clock_gettime(CLOCK_REALTIME,&stop);
-            time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-            time_spent += apple_end_time();
-            access_avg_time=(access_avg_time*(access_calls-1)+time_spent)/access_calls;
             return 0;
           }
           string vals=database_getvals(attr);
@@ -766,12 +703,10 @@ int xmp_access(const char *path, int mask)
   }
 
   if(reta && !getline(ss0, val, '/')) {
-    calc_time_stop(&access_calls, &access_avg_time);
     return 0;
   }
     path=append_path(path);
     int ret = access(path, mask);
-  calc_time_stop(&access_calls, &access_avg_time);
     return ret;
 }
 
@@ -799,8 +734,6 @@ static int xmp_mkdir(const char *path, mode_t mode) {
   struct timespec mkdir_start, mkdir_stop;
   string strpath=path;
   if(strpath.find("localize")!=string::npos) {
-    clock_gettime(CLOCK_REALTIME,&mkdir_start);
-    apple_start_time();
     if(strpath.find("usage")!=string::npos) {
       usage_localize();
     } else {
@@ -824,8 +757,6 @@ static int xmp_mkdir(const char *path, mode_t mode) {
         pclose(stream);
       }
     }
-    clock_gettime(CLOCK_REALTIME,&mkdir_stop);
-    localize_time = (mkdir_stop.tv_sec-mkdir_start.tv_sec)+(mkdir_stop.tv_nsec-mkdir_start.tv_nsec)/BILLION; 
     //cout << "LOCALIZATION TIME:" << localize_time << endl <<endl;
     return -1;
   }
@@ -982,7 +913,11 @@ static int xmp_symlink(const char *from, const char *to) {
 }
 
 static int xmp_rename(const char *from, const char *to) {
-  calc_time_start(&rename_calls);
+  double start_time = 0;
+  struct timeval start_tv;
+  gettimeofday(&start_tv, NULL); 
+  start_time = start_tv.tv_sec + (start_tv.tv_usec/100000);
+  start_times << fixed << start_time << endl << flush;
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
   string fileid = database_getval("name", src);
@@ -1007,8 +942,6 @@ static int xmp_rename(const char *from, const char *to) {
     }
   }
   //cout << "Exiting Rename Function" << endl << endl << endl << endl;
-  calc_time_stop(&rename_calls, &rename_avg_time);
-  times << fixed << asecs << endl << flush;
   return 0;
 }
 
@@ -1083,7 +1016,6 @@ static int xmp_utimens(const char *path, const struct timespec ts[2]) {
 }
 
 static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-  calc_time_start(&read_calls);
   int res = 0;
   path=append_path2(basename(strdup(path)));
   //cout<<"Converted Path: "<<path<<endl<<endl<<endl<<endl;
@@ -1100,14 +1032,10 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
   } else {
     res = -errno;
   }
-  calc_time_stop(&read_calls, &read_avg_time);
   return res;
 }
 
 static int xmp_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-  clock_gettime(CLOCK_REALTIME,&start);
-  apple_start_time();
-  write_calls++;
   //log_msg("in xmp_write");
   int fd;
   int res;
@@ -1116,20 +1044,12 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
   (void) fi;
   fd = open(path, O_WRONLY);
   if (fd == -1){
-    clock_gettime(CLOCK_REALTIME,&stop);
-    time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-    time_spent += apple_end_time();
-    write_avg_time=(write_avg_time*(write_calls-1)+time_spent)/write_calls;
     return errno;
   }
   res = pwrite(fd, buf, size, offset);
   if (res == -1)
     res = errno;
   close(fd);
-  clock_gettime(CLOCK_REALTIME,&stop);
-  time_spent += apple_end_time();
-  time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-  write_avg_time=(write_avg_time*(write_calls-1)+time_spent)/write_calls;
   return res;
 }
 
@@ -1187,8 +1107,6 @@ int khan_flush (const char * path, struct fuse_file_info * info ) {
 int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
 
-  clock_gettime(CLOCK_REALTIME,&start);
-  apple_start_time();
   create_calls++;
 
   string fileid=database_getval("name",basename(strdup(path)));
@@ -1204,10 +1122,6 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 
   map_path(resolve_selectors(path), fileid);
 
-  clock_gettime(CLOCK_REALTIME,&stop);
-  time_spent = (stop.tv_sec-start.tv_sec)+(stop.tv_nsec-start.tv_nsec)/BILLION; tot_time += time_spent;;
-  time_spent += apple_end_time();
-  create_avg_time=(create_avg_time*(create_calls-1)+time_spent)/create_calls;
   return 0;
 }
 
@@ -1424,6 +1338,8 @@ int main(int argc, char *argv[])
   }
   times.open(dir_cpy_times.c_str(), ofstream::out);
   times.precision(15);
+  start_times.open(start_times_file_name.c_str(), ofstream::out);
+  start_times.precision(15);
   //log_msg("initialized....");
   retval=fuse_main(args.argc,args.argv, &khan_ops, khan_data);
   //log_msg("Done with fuse_main...\n");

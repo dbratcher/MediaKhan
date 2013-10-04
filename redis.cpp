@@ -52,7 +52,7 @@ string redis_getval(string file_id, string col) {
     output = reply->str;
   }
 
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
   return cleanup_str(output);
 }
 
@@ -71,7 +71,7 @@ string redis_getkey_cols(string col) {
       }
     }
   }
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
   //cout << "returned " << output << endl;
   return cleanup_str(output);
 }
@@ -98,7 +98,7 @@ string redis_setval(string file_id, string col, string val) {
       string rep_str = reply->str;
       //cout << "did it take?" << rep_str << endl;
     }
-    freeReplyObject(reply);
+    //freeReplyObject(reply);
     //cout << "setting " << result.str() << endl;
     redis_setval("redis_last_id","val",result.str());
     file_id = result.str();
@@ -115,10 +115,10 @@ string redis_setval(string file_id, string col, string val) {
     string rep_str = reply->str;
     output = rep_str + ":" + output;
   }
-  freeReplyObject(reply);
-  output = de_dup(output); 
+  //freeReplyObject(reply);
+  //output = de_dup(output); 
   reply = (redisReply*)redisCommand(c,"hset %s %s %s",file_id.c_str(),col.c_str(),output.c_str());
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
 
   //handle col key
   reply = (redisReply*)redisCommand(c,"hget %s %s",col.c_str(),val.c_str());
@@ -128,11 +128,11 @@ string redis_setval(string file_id, string col, string val) {
     string rep_str = reply->str;
     output = rep_str + ":" + output;
   }
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
     
-  output = de_dup(output); 
+  //output = de_dup(output); 
   reply = (redisReply*)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(),output.c_str());
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
   return file_id;
 }
 
@@ -144,7 +144,7 @@ void redis_remove_val(string fileid, string col, string val){
   reply = (redisReply*)redisCommand(c,"hget %s %s",fileid.c_str(),col.c_str());
   if(reply->len != 0 ) {
     string source = reply->str;
-    freeReplyObject(reply);
+    //freeReplyObject(reply);
 
     //cout << "got " << source << endl;
     size_t found = source.find(val);
@@ -154,13 +154,13 @@ void redis_remove_val(string fileid, string col, string val){
     }
     if(source.length()>0) {
       reply = (redisReply*)redisCommand(c,"hset %s %s %s",fileid.c_str(),col.c_str(),source.c_str());
-      freeReplyObject(reply);
+      //freeReplyObject(reply);
     } else { 
       reply = (redisReply*)redisCommand(c,"hdel %s %s",fileid.c_str(),col.c_str());
-      freeReplyObject(reply);
+      //freeReplyObject(reply);
     }
   } else {
-    freeReplyObject(reply);
+    //freeReplyObject(reply);
   }
   
   //remove from col entry
@@ -173,7 +173,7 @@ void redis_remove_val(string fileid, string col, string val){
     //cout << "after erase " << col_entry << endl;
   }
   reply = (redisReply*)redisCommand(c,"hset %s %s %s",col.c_str(),val.c_str(), col_entry.c_str());
-  freeReplyObject(reply);
+  //freeReplyObject(reply);
 }
 
 

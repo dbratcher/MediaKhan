@@ -11,7 +11,7 @@ StoreClient *myclient;
 bool voldemort_init() {
 	//setup voldemort connection
 	list<string> bootstrapUrls;
-	bootstrapUrls.push_back(string("tcp://10.0.1.2:6666"));
+	bootstrapUrls.push_back(string("tcp://10.0.1.4:6666"));
 	string storeName("test");
 	gconfig=new ClientConfig();
 	gconfig->setBootstrapUrls(&bootstrapUrls);

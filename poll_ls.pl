@@ -8,12 +8,12 @@ my $microseconds = 0;
 while(1) {
   $count = `ls -l test/tags | grep "favs"`;
   ($seconds, $microseconds) = gettimeofday;
-  my $time = $seconds;
-  $time + ($microseconds/1000000.0);
   if($count ne $last) {
     print $count;
     print " ";
-    print $time;
+    print $seconds;
+    print " ";
+    print $microseconds;
     print "\n";
   }
   $last = $count;

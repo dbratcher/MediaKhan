@@ -101,6 +101,9 @@ void process_file(string server, string fileid) {
   stringstream ss2(attrs.c_str());
   while(getline(ss2,token,':')){
     if(strcmp(token.c_str(),"null")!=0){
+      if(token == "name") {
+        continue;
+      }
       //cout << "========= looking at attr =   " << token <<endl;
       string cmd=database_getval(token+"gen","command");
       if(cmd=="null") {
@@ -913,16 +916,21 @@ static int xmp_symlink(const char *from, const char *to) {
 }
 
 static int xmp_rename(const char *from, const char *to) {
+  //cout << endl << endl << endl << "Entering Rename Function" << endl;
   double start_time = 0;
   struct timeval start_tv;
   gettimeofday(&start_tv, NULL); 
-  start_time = start_tv.tv_sec + (start_tv.tv_usec/100000);
+  start_time = start_tv.tv_sec;
+  start_time += (start_tv.tv_usec/1000000.0);
   start_times << fixed << start_time << endl << flush;
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
   string fileid = database_getval("name", src);
+  //cout << fileid << endl;
   database_remove_val(fileid,"name",src);
+  //cout << src << endl;
   database_setval(fileid,"name",dst);
+  //cout << dst << endl;
   string orig_path = append_path2(src);
   string orig_loc = database_getval(fileid,"location");
   map_path(resolve_selectors(to), fileid);

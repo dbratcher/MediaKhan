@@ -16,14 +16,14 @@
 
 //mkdir stats prints stats to stats file and console:
 string stats_file="./stats.txt";
-string dir_cpy_times="./dir_cpy_tims.txt";
+string rename_times_file_name="./rename_times.txt";
 string start_times_file_name = "./start_times.txt";
 vector<string> servers;
 vector<string> server_ids;
 string this_server;
 string this_server_id;
 PyObject* cloud_interface;
-ofstream times;
+ofstream rename_times;
 ofstream start_times;
 
 void cloud_upload(string path) {
@@ -494,6 +494,8 @@ static int khan_getattr(const char *c_path, struct stat *stbuf) {
   string after = resolve_selectors(pre_processed);
   stringstream path(after);
   //cout << "working to pop buffer" << endl << flush;
+  //file_pop_stbuf(stbuf, "test");
+  //int ret = 0;
   int ret = populate_getattr_buffer(stbuf, path);
   //cout << "ended get attr" << endl << flush;
   return ret;
@@ -934,7 +936,6 @@ static int xmp_rename(const char *from, const char *to) {
   string orig_path = append_path2(src);
   string orig_loc = database_getval(fileid,"location");
   map_path(resolve_selectors(to), fileid);
-  unmap_path(resolve_selectors(from), fileid);
   string new_path = append_path2(dst);
   string new_loc = database_getval(fileid,"location");
   if(new_loc!=orig_loc) {
@@ -949,6 +950,12 @@ static int xmp_rename(const char *from, const char *to) {
       rename(orig_path.c_str(), new_path.c_str());
     }
   }
+  double rename_time = 0;
+  struct timeval end_tv;
+  gettimeofday(&end_tv, NULL); 
+  rename_time = end_tv.tv_sec - start_tv.tv_sec;
+  rename_time += (end_tv.tv_usec - start_tv.tv_usec) / 1000000.0;
+  rename_times << fixed << rename_time << endl << flush;
   //cout << "Exiting Rename Function" << endl << endl << endl << endl;
   return 0;
 }
@@ -1063,7 +1070,6 @@ static int xmp_write(const char *path, const char *buf, size_t size, off_t offse
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf) {
     /* Pass the call through to the underlying system which has the media. */
-    fprintf(log, "in xmp_statfs with path %s\n", path);
     int res = statvfs(path, stbuf);
     if (res != 0) {
         fprintf(log, "statfs error for %s\n",path);
@@ -1344,8 +1350,8 @@ int main(int argc, char *argv[])
     //log_msg("Could not initialize khan..Aborting..!\n");
     return -1;
   }
-  times.open(dir_cpy_times.c_str(), ofstream::out);
-  times.precision(15);
+  rename_times.open(rename_times_file_name.c_str(), ofstream::out);
+  rename_times.precision(15);
   start_times.open(start_times_file_name.c_str(), ofstream::out);
   start_times.precision(15);
   //log_msg("initialized....");

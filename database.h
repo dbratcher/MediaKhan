@@ -23,7 +23,7 @@ using namespace std;
 #define VOLDEMORT 1
 #define REDIS 2
 #define BDB 3
-#define DATABASE REDIS
+#define DATABASE VOLDEMORT
 #define BILLION 1E9
 
 #ifdef APPLE

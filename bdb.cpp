@@ -56,7 +56,7 @@ void print_db() {
 }
 
 bool bdb_init() {
-  ////cout << "enter init" << endl << flush;
+  cout << "enter init" << endl << flush;
   int ret = db_create(&dbp, NULL, 0);
   flags = DB_CREATE;
   ret = dbp->open(dbp,		/* DB structure pointer */ 
@@ -66,7 +66,7 @@ bool bdb_init() {
 			DB_HASH,	/* Database access method */ 
 			flags,		/* Open flags */ 
 			0);		
-  ////cout << "exit init" << endl << flush;
+  cout << "exit init" << endl << flush;
   return true;
 }
 

@@ -6,7 +6,7 @@ redisReply* reply;
 
 bool redis_init() {
   struct timeval timeout = { 3600, 0};
-  c=redisConnectWithTimeout((char*)"143.215.204.146",6379, timeout);
+  c=redisConnectWithTimeout((char*)"143.215.204.118",6379, timeout);
     
   if(c->err) {
     fprintf(stderr, "Connection error: %s\n", c->errstr);

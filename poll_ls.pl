@@ -11,10 +11,8 @@ while(1) {
   if($count ne $last) {
     print $count;
     print " ";
-    print $seconds;
-    print " ";
-    print $microseconds;
-    print "\n";
+    $time = $seconds + $microseconds/1000000.0;
+    print "$time\n";
   }
   $last = $count;
 }

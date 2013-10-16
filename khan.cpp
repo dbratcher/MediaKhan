@@ -924,7 +924,7 @@ static int xmp_rename(const char *from, const char *to) {
   gettimeofday(&start_tv, NULL); 
   start_time = start_tv.tv_sec;
   start_time += (start_tv.tv_usec/1000000.0);
-  start_times << fixed << start_tv.tv_sec << " " << start_tv.tv_usec << endl << flush;
+  start_times << fixed << start_time << endl << flush;
   string src = basename(strdup(from));
   string dst = basename(strdup(to));
   string fileid = database_getval("name", src);

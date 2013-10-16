@@ -1,0 +1,9 @@
+ 1381893019 239757
+drwxr-xr-x  10 root  wheel  4096 Oct 15 23:10 favs
+ 1381893040 304843
+drwxr-xr-x  77 root  wheel  4096 Oct 15 23:10 favs
+ 1381893041 325280
+drwxr-xr-x  105 root  wheel  4096 Oct 15 23:10 favs
+ 1381893042 341278
+drwxr-xr-x  107 root  wheel  4096 Oct 15 23:10 favs
+ 1381893043 371564

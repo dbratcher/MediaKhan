@@ -3,12 +3,15 @@ project(MEDIAKHAN)
 
 include(CheckIncludeFiles)
 
+include_directories(/usr/local/include/)
 include_directories(/usr/local/include/fuse)
 include_directories(/usr/local/include/osxfuse/fuse)
 include_directories(/opt/local/include/fuse)
 
 link_directories(/usr/local/lib)
 link_directories(/opt/local/lib)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -v -stdlib=libstdc++")
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=26)
 

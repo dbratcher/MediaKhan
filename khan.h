@@ -30,7 +30,7 @@
 #include <vector>
 
 #ifdef APPLE
-  #include "Python/Python.h"
+  #include "Python.h"
 #else
   #include "Python.h"
 #endif

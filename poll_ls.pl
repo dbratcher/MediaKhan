@@ -6,7 +6,7 @@ my $dir = './test/tags/favs';
 my $seconds = 0;
 my $microseconds = 0;
 while(1) {
-  $count = `ls -l test/tags | grep "favs"`;
+  $count = `ls -l test/tags | grep "favs" | awk '{print \$2}'`;
   ($seconds, $microseconds) = gettimeofday;
   if($count ne $last) {
     print $count;

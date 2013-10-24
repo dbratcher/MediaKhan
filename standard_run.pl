@@ -1,9 +1,6 @@
 use File::Basename;
 
- for ($count = 1; $count < 4; $count++) {
-    $out = `redis-cli flushall`;
-    $out = `./khan ./test -s`;
-    print "startup complete\n";
+ for ($count = 2; $count < 4; $count++) {
     opendir(D, "test/location/laptop/") || die "Can't opendir\n";
     $i = 0;
     @files = ();
@@ -17,8 +14,9 @@ use File::Basename;
         if($i%100==0) {
           print "moving file $i\n";
         }
-        rename("test/\@laptop/$f","test/\@favs/$f");
+        rename("test/location/laptop/$f","test/tags/favs$count/$f");
     }
     closedir(D);
-    $out = `mv rename_times.txt measurements/selectors/selector/redis-4000-run$count.txt`;
+    $out = `mv start_times.txt measurements/inserts/remote/config1/start-redis-4000-run$count.txt`;
+    $out = `touch start_times.txt`;
 }

@@ -6,7 +6,7 @@ $| = 1;
  
 # creating a listening socket
 my $socket = new IO::Socket::INET (
-    LocalHost => '143.215.205.160',
+    LocalHost => '143.215.205.159',
     LocalPort => '7777',
     Proto => 'tcp',
     Listen => 5,

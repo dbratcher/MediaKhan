@@ -307,6 +307,9 @@ int initializing_khan(char * mnt_dir) {
           for(int k=0; k<server_ids.size(); k++) {
             database_setval(fileid, server_ids.at(k), "0");
           }
+          if(j%10==0) {
+            cout << "processed file " << j << "\n";
+          }
           process_file(servers.at(i), fileid);
         } else {
           string fileid = database_getval("name",filename);

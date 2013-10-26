@@ -17,6 +17,6 @@ use File::Basename;
         rename("test/location/laptop/$f","test/tags/favs$count/$f");
     }
     closedir(D);
-    $out = `mv start_times.txt measurements/inserts/remote/config1/start-redis-4000-run$count.txt`;
+    $out = `mv start_times.txt measurements/inserts/remote/remote_config1/start-redis-4000-run$count.txt`;
     $out = `touch start_times.txt`;
 }

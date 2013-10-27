@@ -349,18 +349,20 @@ string str_intersect(string str1, string str2) {
   return join(ret,":");
 }
 
-bool content_has(string vals, string val, bool convert) {
-  vector<string> checks = split(vals,":");
+string last_string = "";
+vector<string> last_vector;
+bool content_has(string vals, string val) {
+  vector<string> checks;
+  if(last_string == vals) {
+    checks = last_vector;
+  } else {
+    checks = split(vals,":");
+    last_string = vals;
+    last_vector = checks;
+  }
   for(int i=0; i<checks.size(); i++) {
-    if(convert) {
-      string filename = database_getval(checks[i],"name");
-      if(filename == val) {
-        return true;
-      }
-    } else {
-      if(checks[i]==val) {
-        return true;
-      }
+    if(checks[i]==val) {
+      return true;
     }
   }
   return false;
@@ -408,7 +410,7 @@ string resolve_selectors(string path) {
           string vals = database_getvals(attr_vec[k]);
           //cout << "with " << vals << endl << flush;
           //see if piece is in vals
-          if(content_has(vals, selectores[j], false)) {
+          if(content_has(vals, selectores[j])) {
             //if so piece now equals attr/val
             if(pieces[i].length()>0) {
               pieces[i]+="/";
@@ -442,23 +444,24 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
     loop = false;
     if(aint) {
       string content = database_getvals("attrs");
-      if(content_has(content, attr, false)) {
+      if(content_has(content, attr)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false) || (attr=="tags")) {
+          if(content_has(content, val) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = str_intersect(current, dir_content);
             }
             string attrs_content = database_getvals("attrs");
             if(fint) {
-              if(content_has(dir_content, file, true)) {
+              string fileid = database_getval("name",file);
+              if(content_has(dir_content, fileid)) {
                 if(!mint) {
                   // /attr/val/file path
                   file_pop_stbuf(stbuf, file);
                   return 0;
                 }
-              } else if(content_has(attrs_content, file, false)) {
+              } else if(content_has(attrs_content, file)) {
                 //repeat with aint = fint, vint = mint, etc
                 aint = fint;
                 attr = file;
@@ -529,17 +532,17 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
     loop = false;
     string content = database_getvals("attrs");
     if(aint) {
-      if(content_has(content, attr, false)) {
+      if(content_has(content, attr)) {
         content = database_getvals(attr);
         if(vint) {
-          if(content_has(content, val, false) || (attr=="tags")) {
+          if(content_has(content, val) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
               dir_content = intersect(current, dir_content);
             }
             string attrs_content = database_getvals("attrs");
             if(fint) {
-              if(content_has(attrs_content, file, false)) {
+              if(content_has(attrs_content, file)) {
                 //repeat with aint = fint, vint = mint, etc
                 aint = fint;
                 attr = file;
@@ -1253,6 +1256,12 @@ static int khan_process_arg(void *data, const char *arg, int key, struct fuse_ar
 static struct fuse_operations khan_ops;
 
 
+void my_terminate(int param) {
+  chdir("/Users/drewbratcher/projects/mediakhan/");
+  cout << "killing... " << flush << endl;
+  exit(1);
+}
+
 int main(int argc, char *argv[])
 {
   khan_ops.getattr  = khan_getattr;
@@ -1319,7 +1328,11 @@ int main(int argc, char *argv[])
       fuse_opt_add_arg(&args, argv[j]);
     }
   }
-     
+
+  //set signal handler
+  signal(SIGTERM, my_terminate);
+  signal(SIGKILL, my_terminate);
+
   fprintf(stderr, "store filename: %s\n", store_filename);
   FILE* stores = fopen(store_filename, "r");
   char buffer[100];

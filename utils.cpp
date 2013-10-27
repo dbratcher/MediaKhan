@@ -22,17 +22,17 @@ int get_file_size(string file_name){
   return st.st_size;
 }
 
-vector<string> split(string str, string delim) {
+vector<string> split(string istr, string delim) {
   int start=0, end; 
   vector<string> vec; 
-  while((end = str.find(delim, start)) != string::npos) {
-    if(str.substr(start, end-start).length()>0) {
-      vec.push_back(str.substr(start, end-start));
-    }    
-    start = end+delim.length();
-  }
-  if(str.substr(start).length()>0) {
-    vec.push_back(str.substr(start));
+  char *saveptr;
+  char *token;
+  char *str = strdup(istr.c_str());
+  const char *delimiters = delim.c_str();
+  for(token = strtok_r(str, delimiters, &saveptr);
+    token != NULL;
+    token = strtok_r(NULL, delimiters, &saveptr)) {
+    vec.push_back(string(token));
   }
   return vec; 
 }

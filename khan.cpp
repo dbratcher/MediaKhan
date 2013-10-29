@@ -443,9 +443,10 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
     //cout << "top of loop" << endl << flush;
     loop = false;
     if(aint) {
-      string content = database_getvals("attrs");
-      if(content_has(content, attr)) {
-        content = database_getvals(attr);
+      string query = database_getval("attrs", attr);
+      //cout << content << "  " << attr << " " << query << endl;
+      if(query!="null") {
+        string content = database_getvals(attr);
         if(vint) {
           if(content_has(content, val) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);

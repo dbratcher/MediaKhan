@@ -6,7 +6,7 @@ $| = 1;
  
 # create a connecting socket
 my $socket = new IO::Socket::INET (
-    PeerHost => '10.0.1.4',
+    PeerHost => '128.61.26.47',
     PeerPort => '7777',
     Proto => 'tcp',
 );

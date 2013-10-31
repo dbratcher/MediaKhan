@@ -49,6 +49,25 @@ string join(vector<string> these, string delim) {
 }
 
 
+string subtract(string files1, string files2){
+  string ret="";
+  string tok1="";
+  string tok2="";
+  stringstream f1(files1);
+  while(getline(f1,tok1,':')){
+    stringstream f2(files2);
+    bool found = false;
+    while(getline(f2,tok2,':')){
+      if(strcmp(tok1.c_str(),tok2.c_str())==0){
+        found = true;        
+      }
+    }
+    if(!found) {
+      ret+=":"+tok1;
+    }
+  }
+  return ret;
+}
 string intersect(string files1, string files2){
   string ret="";
   string tok1="";

@@ -529,6 +529,7 @@ void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert
 void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
   string attr, val, file, more;
   string current_content = "none";
+  string current_attrs = "none";
   void* aint=getline(path, attr, '/');
   void* vint=getline(path, val, '/');
   void* fint=getline(path, file, '/');
@@ -539,11 +540,13 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
     string content = database_getvals("attrs");
     if(aint) {
       if(content_has(content, attr)) {
+        current_attrs += ":";
+        current_attrs += attr; 
         content = database_getvals(attr);
         if(vint) {
           if(content_has(content, val) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
-            if(current!="none") {
+            if(current_content!="none") {
               dir_content = intersect(current_content, dir_content);
             }
             string attrs_content = database_getvals("attrs");
@@ -556,13 +559,13 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
                 val = more;
                 fint = getline(path, file, '/');
                 mint = getline(path, more, '/');
-                current_attrs += ":";
-                current_attrs += 
                 current_content = dir_content;
                 loop = true;
               }
             } else {
               // /attr/val dir
+              fprintf(stderr, "%s, %s\n\n\n\n\n\n", attrs_content.c_str(), current_attrs.c_str());
+              attrs_content = subtract(attrs_content, current_attrs);
               dir_pop_buf(buf, filler, dir_content, true);
               dir_pop_buf(buf, filler, attrs_content, false);
             }  
@@ -1167,7 +1170,7 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 #else
 static int xmp_setxattr(const char *path, const char *name, const char *value,  size_t size, int flags) {
 #endif
-  fprintf(stderr, "setxattr call\n %s, %s, %s\n\n", path, name, value);
+  fprintf(stderr, "setxattr call\n %s, %s, %s\n\n\n\n\n\n\n\n\n\n", path, name, value);
   string xpath = "xattr:";
   xpath += path;
   redis_setval(xpath, name, value);

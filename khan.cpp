@@ -495,8 +495,13 @@ int populate_getattr_buffer(struct stat* stbuf, stringstream &path) {
 }
 
 static int khan_getattr(const char *c_path, struct stat *stbuf) {
+
   //cout << "started get attr" << endl << flush;
   string pre_processed = c_path+1;
+  if(pre_processed == ".DS_Store") {
+    file_pop_stbuf(stbuf, pre_processed);
+    return 0;
+  }
   //cout << "starting to resolve selectors" << endl << flush;
   string after = resolve_selectors(pre_processed);
   stringstream path(after);
@@ -523,7 +528,7 @@ void dir_pop_buf(void* buf, fuse_fill_dir_t filler, string content, bool convert
 
 void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &path) {
   string attr, val, file, more;
-  string current = "none";
+  string current_content = "none";
   void* aint=getline(path, attr, '/');
   void* vint=getline(path, val, '/');
   void* fint=getline(path, file, '/');
@@ -539,7 +544,7 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
           if(content_has(content, val) || (attr=="tags")) {
             string dir_content = database_getval(attr, val);
             if(current!="none") {
-              dir_content = intersect(current, dir_content);
+              dir_content = intersect(current_content, dir_content);
             }
             string attrs_content = database_getvals("attrs");
             if(fint) {
@@ -551,7 +556,9 @@ void populate_readdir_buffer(void* buf, fuse_fill_dir_t filler, stringstream &pa
                 val = more;
                 fint = getline(path, file, '/');
                 mint = getline(path, more, '/');
-                current = dir_content;
+                current_attrs += ":";
+                current_attrs += 
+                current_content = dir_content;
                 loop = true;
               }
             } else {
@@ -1160,6 +1167,10 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 #else
 static int xmp_setxattr(const char *path, const char *name, const char *value,  size_t size, int flags) {
 #endif
+  fprintf(stderr, "setxattr call\n %s, %s, %s\n\n", path, name, value);
+  string xpath = "xattr:";
+  xpath += path;
+  redis_setval(xpath, name, value);
   return 0;
 }
 #ifdef APPLE
@@ -1167,60 +1178,72 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 #else
   static int xmp_getxattr(const char *path, const char *name, char *value, size_t size) {
 #endif
-  return 0;
+  fprintf(stderr, "getxattr call\n %s, %s, %s\n", path, name, value);
+  string xpath = "xattr:";
+  xpath += path;
+  string db_val = redis_getval( xpath, name);
+  if(db_val != "null") {
+    snprintf(value, size, "%s", db_val.c_str());
+    fprintf(stderr, "returned %s\n\n", value);
+    return 0;
+  }
+  errno = ENOATTR;
+  return -1;
 }
 
 static int xmp_listxattr(const char *path, char *list, size_t size) {
+  fprintf(stderr, "listxattr call\n %s, %s\n\n", path, list);
   return 0;
 }
 
 static int xmp_removexattr(const char *path, const char *name) {
+  fprintf(stderr, "removexattr call\n %s, %s\n\n", path, name);
   return 0;
 }
 
 #ifdef APPLE
 
 static int xmp_setvolname(const char* param) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called setvolname\n");
     return 0;
 }
 
 static int xmp_exchange(const char* param1, const char* param2, unsigned long param3) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called exchange\n");
     return 0;
 }
 
 static int xmp_getxtimes(const char* param1, struct timespec* param2, struct timespec* param3) {
-    ///log_msg("apple function called\n");
+    fprintf(stderr, "apple function called xtimes\n");
     return 0;
 }
 
 static int xmp_setbkuptime(const char* param1, const struct timespec* param2) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called setbkuptimes\n");
     return 0;
 }
 
 static int xmp_setchgtime(const char* param1, const struct timespec* param2) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called setchgtimes\n");
     return 0;
 }
 
 static int xmp_setcrtime(const char* param1, const struct timespec* param2) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called setcrtimes\n");
     return 0;
 }
 
 static int xmp_chflags(const char* param1, uint32_t param2) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called chflags\n");
     return 0;
 }
 static int xmp_setattr_x(const char* param1, struct setattr_x* param2) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called setattr_x\n");
     return 0;
 }
 
 static int xmp_fsetattr_x(const char* param1, struct setattr_x* param2, struct fuse_file_info* param3) {
-    //log_msg("apple function called\n");
+    fprintf(stderr, "apple function called fsetattr_x\n");
     return 0;
 }
 

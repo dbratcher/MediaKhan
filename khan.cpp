@@ -1156,6 +1156,29 @@ int khan_create(const char *path, mode_t mode, struct fuse_file_info *fi)
   return 0;
 }
 
+string bin2hex(const char* input, size_t size)
+{
+    std::string res;
+    const char hex[] = "0123456789ABCDEF";
+    for(int i=0; i<size; i++)
+    {
+        unsigned char c = input[i];
+        res += (char)(c+10);
+        //res += hex[c >> 4];
+        //res += hex[c & 0xf];
+    }
+
+    return res;
+}
+
+string hex2bin(string in) {
+  for(int i=0; i<in.length(); i++) {
+    in[i]-=10;
+  }
+  return in;
+}
+
+
 int khan_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
 {
   //log_msg("in khan_fgetattr");
@@ -1170,10 +1193,12 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 #else
 static int xmp_setxattr(const char *path, const char *name, const char *value,  size_t size, int flags) {
 #endif
-  fprintf(stderr, "setxattr call\n %s, %s, %s\n\n\n\n\n\n\n\n\n\n", path, name, value);
+  string attr = bin2hex(value, size);
+  fprintf(stderr, "setxattr call\npath:%sname:%svalue:%s\n\n\n\n\n\n\n\n\n\n", path, name, value);
   string xpath = "xattr:";
   xpath += path;
-  redis_setval(xpath, name, value);
+  redis_setval(xpath, name, attr.c_str());
+  fprintf(stderr, "setxattr call\n %s, %s, %s\n\n\n\n\n\n\n\n\n\n", xpath.c_str(), name, attr.c_str());
   return 0;
 }
 #ifdef APPLE
@@ -1185,10 +1210,18 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
   string xpath = "xattr:";
   xpath += path;
   string db_val = redis_getval( xpath, name);
+  fprintf(stderr, "getxattr call\npath:%s\nname:%s\nvalue:%s\nsize:%lu\n\n\n\n\n", xpath.c_str(), name, db_val.c_str(), size);
   if(db_val != "null") {
-    snprintf(value, size, "%s", db_val.c_str());
-    fprintf(stderr, "returned %s\n\n", value);
-    return 0;
+    db_val = hex2bin(db_val);
+    if(value==NULL) {
+      errno = 0;
+      return db_val.length();
+    }
+    memcpy(value, db_val.c_str(), size);
+    size_t num = snprintf(value, size, "%s", db_val.c_str());
+    fprintf(stderr, "returned\nstring:%s\ncount:%lu\n\n", value, num);
+    errno = 0;
+    return size;
   }
   errno = ENOATTR;
   return -1;
@@ -1196,7 +1229,25 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,  
 
 static int xmp_listxattr(const char *path, char *list, size_t size) {
   fprintf(stderr, "listxattr call\n %s, %s\n\n", path, list);
-  return 0;
+  string xpath = "xattr:";
+  xpath += path;
+  string attrs = database_getvals(xpath);
+  char* mal = strdup(attrs.c_str());
+  int count = 1;
+  int str_size = strlen(mal);
+  for(int i = 0; i<str_size; i++) {
+    if(mal[i]==':') {
+      mal[i]='\0';
+      count += 1;
+    }
+  }
+  if(list==NULL) {
+    fprintf(stderr, "returning %d\n", str_size);
+    return str_size;
+  }
+  snprintf(list, size, "%s", attrs.c_str());
+  fprintf(stderr, "returning %s and %d\n", list, count);
+  return count;
 }
 
 static int xmp_removexattr(const char *path, const char *name) {
